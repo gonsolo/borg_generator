@@ -199,7 +199,7 @@ class BorgTile(
     q: Parameters)
   extends RocketTile(params, crossing, lookup)(q)
 {
-  override val cpuDevice: SimpleDevice = new SimpleDevice("cpu", Seq("sifive,rocket0", "riscv")) {
+  override val cpuDevice: SimpleDevice = new SimpleDevice("borg-cpu", Seq("sifive,rocket0", "riscv")) {
     override def parent = Some(ResourceAnchors.soc)
   }
 }
