@@ -182,20 +182,26 @@ class BorgTL(params: BorgParams, beatBytes: Int)(implicit p: Parameters) extends
         0x10 -> Seq(
           RegField.r(2, dma_state))             // read-only
         )
-    }
+
+      // Shading processor
+      val rocketTileParams = RocketTileParams()
+      val crossing = RocketCrossingParams()
+      val lookup: LookupByHartIdImpl = HartsWontDeduplicate(rocketTileParams)
+      val borgTile = new BorgTile(rocketTileParams, crossing, lookup, p)
+    } // withClockAndReset
   }
 }
 
 class BorgTile(
-  params: RocketTileParams,
-  crossing: HierarchicalElementCrossingParamsLike,
-  lookup: LookupByHartIdImpl,
-  q: Parameters)
-  extends RocketTile(params, crossing, lookup)(q) {
-
-    override val cpuDevice: SimpleDevice = new SimpleDevice("cpu", Seq("sifive,rocket0", "riscv")) {
-      override def parent = Some(ResourceAnchors.soc)
-    }
+    params: RocketTileParams,
+    crossing: HierarchicalElementCrossingParamsLike,
+    lookup: LookupByHartIdImpl,
+    q: Parameters)
+  extends RocketTile(params, crossing, lookup)(q)
+{
+  override val cpuDevice: SimpleDevice = new SimpleDevice("cpu", Seq("sifive,rocket0", "riscv")) {
+    override def parent = Some(ResourceAnchors.soc)
+  }
 }
 
 trait CanHavePeripheryBorg { this: BaseSubsystem =>
