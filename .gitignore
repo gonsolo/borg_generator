@@ -2,3 +2,4 @@
 .metals
 target
 src/main/scala/.scala-build
+project
