@@ -183,21 +183,47 @@ class BorgTL(params: BorgParams, beatBytes: Int)(implicit p: Parameters) extends
           RegField.r(2, dma_state))             // read-only
         )
 
-      // Shading processor
-      val rocketTileParams = RocketTileParams()
-      val crossing = RocketCrossingParams()
-      val lookup: LookupByHartIdImpl = HartsWontDeduplicate(rocketTileParams)
-      val borgTile = new BorgTile(rocketTileParams, crossing, lookup, p)
     } // withClockAndReset
   }
 }
 
+case class BorgTileParams(
+      core: RocketCoreParams = RocketCoreParams(),
+      icache: Option[ICacheParams] = Some(ICacheParams()),
+      dcache: Option[DCacheParams] = Some(DCacheParams()),
+      btb: Option[BTBParams] = Some(BTBParams()),
+      dataScratchpadBytes: Int = 0,
+      tileId: Int = 0,
+      beuAddr: Option[BigInt] = None,
+      blockerCtrlAddr: Option[BigInt] = None,
+      clockSinkParams: ClockSinkParameters = ClockSinkParameters(),
+      boundaryBuffers: Option[RocketTileBoundaryBufferParams] = None
+    ) extends InstantiableTileParams[BorgTile] {
+    require(icache.isDefined)
+    require(dcache.isDefined)
+    val baseName = "borgtile"
+    val uniqueName = s"${baseName}_$tileId"
+    def instantiate(crossing: HierarchicalElementCrossingParamsLike, lookup: LookupByHartIdImpl)(implicit p: Parameters): BorgTile = {
+      new BorgTile(this, crossing, lookup, p)
+    }
+  }
+
 class BorgTile(
-    params: RocketTileParams,
+    params: BorgTileParams,
     crossing: HierarchicalElementCrossingParamsLike,
     lookup: LookupByHartIdImpl,
-    q: Parameters)
-  extends RocketTile(params, crossing, lookup)(q)
+    p: Parameters)
+  extends RocketTile(RocketTileParams(
+    core = params.core,
+    icache = params.icache,
+    dcache = params.dcache,
+    btb = params.btb,
+    dataScratchpadBytes = params.dataScratchpadBytes,
+    tileId = params.tileId,
+    beuAddr = params.beuAddr,
+    blockerCtrlAddr = params.blockerCtrlAddr,
+    clockSinkParams = params.clockSinkParams,
+    boundaryBuffers = params.boundaryBuffers), crossing, lookup)(p)
 {
   override val cpuDevice: SimpleDevice = new SimpleDevice("borg-cpu", Seq("sifive,rocket0", "riscv")) {
     override def parent = Some(ResourceAnchors.soc)
@@ -229,6 +255,29 @@ trait CanHavePeripheryBorg { this: BaseSubsystem =>
   }
 }
 
-class WithBorg() extends Config((site, here, up) => {
+case class BorgTileAttachParams(
+  tileParams: BorgTileParams,
+  crossingParams: RocketCrossingParams
+) extends CanAttachTile { type TileType = BorgTile }
+
+class WithBorg(
+  ) extends Config((site, here, up) => {
+
   case BorgKey => Some(BorgParams())
+  case TilesLocated(InSubsystem) => {
+    val prev = up(TilesLocated(InSubsystem))
+    val idOffset = up(NumTiles)
+    val borg = BorgTileParams(
+        core   = RocketCoreParams(
+        fpu = Some(FPUParams())),
+        dcache = Some(DCacheParams()),
+        icache = Some(ICacheParams()))
+    val n = 1
+    val crossing = RocketCrossingParams()
+      List.tabulate(n)(i => BorgTileAttachParams(
+        borg.copy(tileId = i + idOffset),
+        crossing
+      )) ++ prev
+  }
+  case NumTiles => up(NumTiles) + 1
 })
