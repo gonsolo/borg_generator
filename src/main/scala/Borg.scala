@@ -191,7 +191,7 @@ case class BorgTileParams(
       core: RocketCoreParams = RocketCoreParams(),
       icache: Option[ICacheParams] = Some(ICacheParams()),
       dcache: Option[DCacheParams] = Some(DCacheParams()),
-      btb: Option[BTBParams] = Some(BTBParams()),
+      btb: Option[BTBParams] = None, //Some(BTBParams()),
       dataScratchpadBytes: Int = 0,
       tileId: Int = 0,
       beuAddr: Option[BigInt] = None,
