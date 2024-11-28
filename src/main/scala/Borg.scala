@@ -5,6 +5,7 @@ import chisel3.util._
 import chisel3.experimental.{IntParam, BaseModule}
 
 import freechips.rocketchip.diplomacy.{AddressSet, IdRange}
+import freechips.rocketchip.devices.tilelink.{BasicBusBlocker, BasicBusBlockerParams}
 import freechips.rocketchip.interrupts.IntIdentityNode
 import freechips.rocketchip.prci._
 import freechips.rocketchip.resources._
@@ -236,6 +237,19 @@ class BorgTile private(
   }
 
   override lazy val module = new BorgTileModuleImp(this)
+
+  // Begin from RocketTile //////////////////
+  val tile_master_blocker =
+    tileParams.blockerCtrlAddr
+      .map(BasicBusBlockerParams(_, xBytes, masterPortBeatBytes, deadlock = true))
+      .map(bp => LazyModule(new BasicBusBlocker(bp)))
+
+   tile_master_blocker.foreach(lm => connectTLSlave(lm.controlNode, xBytes))
+
+   tlOtherMastersNode := tile_master_blocker.map { _.node := tlMasterXbar.node } getOrElse { tlMasterXbar.node }
+   masterNode :=* tlOtherMastersNode
+
+  // End from RocketTile //////////////////
 }
 
 class BorgTileModuleImp(outer: BorgTile)
