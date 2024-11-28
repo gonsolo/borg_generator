@@ -225,7 +225,7 @@ class BorgTile(
     clockSinkParams = params.clockSinkParams,
     boundaryBuffers = params.boundaryBuffers), crossing, lookup)(p)
 {
-  override val cpuDevice: SimpleDevice = new SimpleDevice("borg-cpu", Seq("sifive,rocket0", "riscv")) {
+  override val cpuDevice: SimpleDevice = new SimpleDevice("gpu", Seq("borg,borg-007", "borg,borg-100")) {
     override def parent = Some(ResourceAnchors.soc)
   }
 }
