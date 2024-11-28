@@ -203,31 +203,44 @@ case class BorgTileParams(
     require(dcache.isDefined)
     val baseName = "borgtile"
     val uniqueName = s"${baseName}_$tileId"
-    def instantiate(crossing: HierarchicalElementCrossingParamsLike, lookup: LookupByHartIdImpl)(implicit p: Parameters): BorgTile = {
-      new BorgTile(this, crossing, lookup, p)
+
+    def instantiate(
+      crossing: HierarchicalElementCrossingParamsLike,
+      lookup: LookupByHartIdImpl)(implicit p: Parameters): BorgTile = {
+      new BorgTile(this, crossing, lookup)
     }
   }
 
-class BorgTile(
+class BorgTile private(
+    val borgTileParams: BorgTileParams,
+    crossing: ClockCrossingType,
+    lookup: LookupByHartIdImpl,
+    q: Parameters
+) extends BaseTile(borgTileParams, crossing, lookup, q)
+  with SinksExternalInterrupts
+  with SourcesExternalNotifications {
+
+  def this(
     params: BorgTileParams,
     crossing: HierarchicalElementCrossingParamsLike,
-    lookup: LookupByHartIdImpl,
-    p: Parameters)
-  extends RocketTile(RocketTileParams(
-    core = params.core,
-    icache = params.icache,
-    dcache = params.dcache,
-    btb = params.btb,
-    dataScratchpadBytes = params.dataScratchpadBytes,
-    tileId = params.tileId,
-    beuAddr = params.beuAddr,
-    blockerCtrlAddr = params.blockerCtrlAddr,
-    clockSinkParams = params.clockSinkParams,
-    boundaryBuffers = params.boundaryBuffers), crossing, lookup)(p)
-{
-  override val cpuDevice: SimpleDevice = new SimpleDevice("gpu", Seq("borg,borg-007", "borg,borg-100")) {
+    lookup: LookupByHartIdImpl
+  )(implicit p: Parameters) =
+    this(params, crossing.crossingType, lookup, p)
+
+  val intOutwardNode = None
+  val slaveNode = TLIdentityNode()
+  val masterNode = visibilityNode
+
+  val cpuDevice: SimpleDevice = new SimpleDevice("gpu", Seq("borg,borg-007", "borg,borg-100")) {
     override def parent = Some(ResourceAnchors.soc)
   }
+
+  override lazy val module = new BorgTileModuleImp(this)
+}
+
+class BorgTileModuleImp(outer: BorgTile)
+  extends BaseTileModuleImp(outer) {
+
 }
 
 trait CanHavePeripheryBorg { this: BaseSubsystem =>
