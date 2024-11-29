@@ -17,6 +17,7 @@ import freechips.rocketchip.tilelink._
 import freechips.rocketchip.util.UIntIsOneOf
 
 import org.chipsalliance.cde.config.{Parameters, Field, Config}
+import org.chipsalliance.diplomacy.DisableMonitors
 import org.chipsalliance.diplomacy.lazymodule.{InModuleBody, LazyModule}
 
 case class BorgParams(
@@ -62,24 +63,24 @@ class BorgMMIOChiselModule(val w: Int) extends Module {
 
   when (state === s_idle && io.input_valid) {
     state := s_run
-  } .elsewhen (state === s_run && tmp === 0.U) {
-    state := s_done
-  } .elsewhen (state === s_done && io.output_ready) {
-    state := s_idle
-  }
+    } .elsewhen (state === s_run && tmp === 0.U) {
+      state := s_done
+      } .elsewhen (state === s_done && io.output_ready) {
+        state := s_idle
+      }
 
-  when (state === s_idle && io.input_valid) {
-    borg := io.x
-    tmp := io.y
-  } .elsewhen (state === s_run) {
-    when (borg > tmp) {
-      borg := borg - tmp
-    } .otherwise {
-      tmp := tmp - borg
-    }
-  }
+      when (state === s_idle && io.input_valid) {
+        borg := io.x
+        tmp := io.y
+        } .elsewhen (state === s_run) {
+          when (borg > tmp) {
+            borg := borg - tmp
+            } .otherwise {
+              tmp := tmp - borg
+            }
+        }
 
-  io.busy := state =/= s_idle
+        io.busy := state =/= s_idle
 }
 
 class BorgTL(params: BorgParams, beatBytes: Int)(implicit p: Parameters) extends ClockSinkDomain(ClockSinkParameters())(p) {
@@ -189,37 +190,37 @@ class BorgTL(params: BorgParams, beatBytes: Int)(implicit p: Parameters) extends
 }
 
 case class BorgTileParams(
-      core: RocketCoreParams = RocketCoreParams(),
-      icache: Option[ICacheParams] = Some(ICacheParams()),
-      dcache: Option[DCacheParams] = Some(DCacheParams()),
-      btb: Option[BTBParams] = None, //Some(BTBParams()),
-      dataScratchpadBytes: Int = 0,
-      tileId: Int = 0,
-      beuAddr: Option[BigInt] = None,
-      blockerCtrlAddr: Option[BigInt] = None,
-      clockSinkParams: ClockSinkParameters = ClockSinkParameters(),
-      boundaryBuffers: Option[RocketTileBoundaryBufferParams] = None
-    ) extends InstantiableTileParams[BorgTile] {
-    require(icache.isDefined)
-    require(dcache.isDefined)
-    val baseName = "borgtile"
-    val uniqueName = s"${baseName}_$tileId"
+  core: RocketCoreParams = RocketCoreParams(),
+  icache: Option[ICacheParams] = Some(ICacheParams()),
+  dcache: Option[DCacheParams] = Some(DCacheParams()),
+  btb: Option[BTBParams] = None, //Some(BTBParams()),
+  dataScratchpadBytes: Int = 0,
+  tileId: Int = 0,
+  beuAddr: Option[BigInt] = None,
+  blockerCtrlAddr: Option[BigInt] = None,
+  clockSinkParams: ClockSinkParameters = ClockSinkParameters(),
+  boundaryBuffers: Option[RocketTileBoundaryBufferParams] = None
+) extends InstantiableTileParams[BorgTile] {
+  require(icache.isDefined)
+  require(dcache.isDefined)
+  val baseName = "borgtile"
+  val uniqueName = s"${baseName}_$tileId"
 
-    def instantiate(
-      crossing: HierarchicalElementCrossingParamsLike,
-      lookup: LookupByHartIdImpl)(implicit p: Parameters): BorgTile = {
+  def instantiate(
+    crossing: HierarchicalElementCrossingParamsLike,
+    lookup: LookupByHartIdImpl)(implicit p: Parameters): BorgTile = {
       new BorgTile(this, crossing, lookup)
     }
-  }
+}
 
 class BorgTile private(
-    val borgTileParams: BorgTileParams,
-    crossing: ClockCrossingType,
-    lookup: LookupByHartIdImpl,
-    q: Parameters
+  val borgTileParams: BorgTileParams,
+  crossing: ClockCrossingType,
+  lookup: LookupByHartIdImpl,
+  q: Parameters
 ) extends BaseTile(borgTileParams, crossing, lookup, q)
-  with SinksExternalInterrupts
-  with SourcesExternalNotifications {
+with SinksExternalInterrupts
+with SourcesExternalNotifications {
 
   def this(
     params: BorgTileParams,
@@ -228,32 +229,32 @@ class BorgTile private(
   )(implicit p: Parameters) =
     this(params, crossing.crossingType, lookup, p)
 
-  val intOutwardNode = None
-  val slaveNode = TLIdentityNode()
-  val masterNode = visibilityNode
+    val intOutwardNode = None
+    val slaveNode = TLIdentityNode()
+    val masterNode = visibilityNode
 
-  val cpuDevice: SimpleDevice = new SimpleDevice("gpu", Seq("borg,borg-007", "borg,borg-100")) {
-    override def parent = Some(ResourceAnchors.soc)
-  }
+    val cpuDevice: SimpleDevice = new SimpleDevice("gpu", Seq("borg,borg-007", "borg,borg-100")) {
+      override def parent = Some(ResourceAnchors.soc)
+    }
 
-  override lazy val module = new BorgTileModuleImp(this)
+    override lazy val module = new BorgTileModuleImp(this)
 
-  // Begin from RocketTile //////////////////
-  val tile_master_blocker =
-    tileParams.blockerCtrlAddr
-      .map(BasicBusBlockerParams(_, xBytes, masterPortBeatBytes, deadlock = true))
-      .map(bp => LazyModule(new BasicBusBlocker(bp)))
+    // Begin from RocketTile //////////////////
+    val tile_master_blocker =
+      tileParams.blockerCtrlAddr
+        .map(BasicBusBlockerParams(_, xBytes, masterPortBeatBytes, deadlock = true))
+        .map(bp => LazyModule(new BasicBusBlocker(bp)))
 
-   tile_master_blocker.foreach(lm => connectTLSlave(lm.controlNode, xBytes))
+    tile_master_blocker.foreach(lm => connectTLSlave(lm.controlNode, xBytes))
 
-   tlOtherMastersNode := tile_master_blocker.map { _.node := tlMasterXbar.node } getOrElse { tlMasterXbar.node }
-   masterNode :=* tlOtherMastersNode
-
-  // End from RocketTile //////////////////
+    tlOtherMastersNode := tile_master_blocker.map { _.node := tlMasterXbar.node } getOrElse { tlMasterXbar.node }
+    masterNode :=* tlOtherMastersNode
+    DisableMonitors { implicit p => tlSlaveXbar.node :*= slaveNode } 
+    // End from RocketTile //////////////////
 }
 
 class BorgTileModuleImp(outer: BorgTile)
-  extends BaseTileModuleImp(outer) {
+extends BaseTileModuleImp(outer) {
 
 }
 
@@ -282,29 +283,29 @@ trait CanHavePeripheryBorg { this: BaseSubsystem =>
   }
 }
 
-case class BorgTileAttachParams(
-  tileParams: BorgTileParams,
-  crossingParams: RocketCrossingParams
-) extends CanAttachTile { type TileType = BorgTile }
+    case class BorgTileAttachParams(
+      tileParams: BorgTileParams,
+      crossingParams: RocketCrossingParams
+    ) extends CanAttachTile { type TileType = BorgTile }
 
-class WithBorg(
-  ) extends Config((site, here, up) => {
+    class WithBorg(
+      ) extends Config((site, here, up) => {
 
-  case BorgKey => Some(BorgParams())
-  case TilesLocated(InSubsystem) => {
-    val prev = up(TilesLocated(InSubsystem))
-    val idOffset = up(NumTiles)
-    val borg = BorgTileParams(
-        core   = RocketCoreParams(
-        fpu = Some(FPUParams())),
-        dcache = Some(DCacheParams()),
-        icache = Some(ICacheParams()))
-    val n = 1
-    val crossing = RocketCrossingParams()
-      List.tabulate(n)(i => BorgTileAttachParams(
-        borg.copy(tileId = i + idOffset),
-        crossing
-      )) ++ prev
-  }
-  case NumTiles => up(NumTiles) + 1
-})
+        case BorgKey => Some(BorgParams())
+        case TilesLocated(InSubsystem) => {
+          val prev = up(TilesLocated(InSubsystem))
+          val idOffset = up(NumTiles)
+          val borg = BorgTileParams(
+            core   = RocketCoreParams(
+              fpu = Some(FPUParams())),
+            dcache = Some(DCacheParams()),
+            icache = Some(ICacheParams()))
+          val n = 1
+          val crossing = RocketCrossingParams()
+          List.tabulate(n)(i => BorgTileAttachParams(
+            borg.copy(tileId = i + idOffset),
+            crossing
+          )) ++ prev
+        }
+        case NumTiles => up(NumTiles) + 1
+      })
