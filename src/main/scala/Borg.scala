@@ -123,7 +123,7 @@ class BorgTL(params: BorgParams, beatBytes: Int)(implicit p: Parameters)
         0x00 -> Seq(RegField.r(2, status)),
         0x04 -> Seq(RegField.w(params.width, x)),
         0x08 -> Seq(RegField.w(params.width, y)),
-        0x0C -> Seq(RegField.w(params.width, borg_result))
+        0x0C -> Seq(RegField.r(params.width, borg_result))
       )
     }
   }
