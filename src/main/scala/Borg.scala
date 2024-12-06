@@ -175,56 +175,16 @@ class BorgControlPathIo() extends Bundle() {
   val dat  = Flipped(new DatToCtlIo())
 }
 
-trait MemoryOpConstants
-{
-  val MT_X  = 0.asUInt(3.W)
-
-  val M_X   = "b0".asUInt(1.W)
-}
-
 trait ScalarOpConstants
 {
-  val Y = true.B
-  val N = false.B
-
-  val BR_N   = 0.asUInt(4.W)
-
-  // RS1 Operand Select Signal
-  val OP1_RS1 = 0.asUInt(2.W) // Register Source #1
-  val OP1_X   = 0.asUInt(2.W)
-
-  // RS2 Operand Select Signal
-  val OP2_IMI = 1.asUInt(2.W) // immediate, I-type
-
-  val OP2_X   = 0.asUInt(2.W)
-
-  // Register File Write Enable Signal
-  val REN_0   = false.B
-  val REN_1   = true.B
-  val REN_X   = false.B
-
   // ALU Operation Signal
-  val ALU_ADD = 1.asUInt(4.W)
   val ALU_X   = 0.asUInt(4.W)
-
-  // Writeback Select Signal
-  val WB_ALU  = 0.asUInt(2.W)
-
-  val WB_X    = 0.asUInt(2.W)
-
-  val MEN_0   = false.B
-
+  val ALU_ADD = 1.asUInt(4.W)
 }
 
-object Constants extends ScalarOpConstants with MemoryOpConstants {}
+object Constants extends ScalarOpConstants {}
 
 import Constants._
-
-object CSR
-{
-  val SZ = 3
-  def N = 0.U(SZ.W)
-}
 
 object Instructions
 {
@@ -240,9 +200,9 @@ class BorgControlPath(implicit val conf: BorgCoreParams) extends Module
 
   val csignals = ListLookup(
     io.dat.inst,
-    List(N, BR_N  , OP1_X  ,  OP2_X  , ALU_X   , WB_X   , REN_0, MEN_0, M_X  , MT_X,  CSR.N),
+    List(ALU_X),
     Array(
-      ADDI    -> List(Y, BR_N  , OP1_RS1, OP2_IMI , ALU_ADD ,  WB_ALU, REN_1, MEN_0, M_X  , MT_X,  CSR.N)
+      ADDI    -> List(ALU_ADD)
     )
   )
 }

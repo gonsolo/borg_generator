@@ -1,5 +1,8 @@
-.bsp
-.metals
-target
-src/main/scala/.scala-build
-project
+/.bsp
+/.metals
+/target
+/src/main/scala/.scala-build
+/project/build.properties
+/project/project
+/project/target
+/.bloop
