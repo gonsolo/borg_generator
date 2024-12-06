@@ -1,5 +1,7 @@
 package borg
 
+import scala.collection.immutable.ArraySeq.unsafeWrapArray
+
 import chisel3._
 import chisel3.util._
 
@@ -275,9 +277,9 @@ class BorgDataPath(implicit val p: Parameters, val conf: BorgCoreParams) extends
 
   val alu_out = Wire(UInt(conf.xprlen.W))
 
-  alu_out := MuxCase(0.U, Array(
-    (io.ctl.alu_fun === ALU_ADD) -> (alu_op1 + alu_op2).asUInt
-    ))
+  alu_out := MuxCase(0.U, unsafeWrapArray(Array(
+      (io.ctl.alu_fun === ALU_ADD) -> (alu_op1 + alu_op2).asUInt
+    )))
 }
 
 class BorgCore(implicit val p: Parameters, val conf: BorgCoreParams)
