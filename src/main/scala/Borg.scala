@@ -171,20 +171,21 @@ class DatToCtlIo() extends Bundle() {
   val inst   = Output(UInt(32.W))
 }
 
-class BorgControlPathIo() extends Bundle() {
-  val dat  = Flipped(new DatToCtlIo())
-}
-
 trait ScalarOpConstants
 {
   // ALU Operation Signal
-  val ALU_X   = 0.asUInt(4.W)
-  val ALU_ADD = 1.asUInt(4.W)
+  val ALU_X   = 0.asUInt(4.W) // unspecified alu function
+  val ALU_ADD = 1.asUInt(4.W) // add alu function
 }
 
 object Constants extends ScalarOpConstants {}
 
 import Constants._
+
+class BorgControlPathIo() extends Bundle() {
+  val dat = Flipped(new DatToCtlIo())
+  val ctl = new CtlToDatIo()
+}
 
 object Instructions
 {
@@ -195,20 +196,44 @@ import Instructions._
 
 class BorgControlPath(implicit val conf: BorgCoreParams) extends Module
 {
+  // Input and output signals for the control unit
   val io = IO(new BorgControlPathIo())
   io := DontCare
 
+  // Look up the incoming instruction and set the ALU operation accordingly
   val csignals = ListLookup(
     io.dat.inst,
-    List(ALU_X),
+    List(              ALU_X),
     Array(
-      ADDI    -> List(ALU_ADD)
+    // instruction   | alu function
+      ADDI    -> List( ALU_ADD)
     )
   )
+
+  // Put the alu function into a variable
+  val cs_alu_fun :: Nil = csignals
+
+  // Set the data path control signals
+  io.ctl.alu_fun := cs_alu_fun
+}
+
+// Signals from the control unit to the data path unit
+class CtlToDatIo() extends Bundle() {
+
+  // The control unit decodes the instruction and set the correspong alu function for the data path unit
+  val alu_fun   = Output(UInt(ALU_X.getWidth.W))
+}
+
+
+class DpathIo() extends Bundle()
+{
+  val ctl = Flipped(new CtlToDatIo())
 }
 
 class BorgDataPath(implicit val p: Parameters, val conf: BorgCoreParams) extends Module
 {
+  val io = IO(new DpathIo())
+  io := DontCare
   // TODO
 }
 
@@ -218,4 +243,9 @@ class BorgCore(implicit val p: Parameters, val conf: BorgCoreParams)
   io := DontCare
   val c  = Module(new BorgControlPath())
   val d  = Module(new BorgDataPath())
+
+  // Connect the control unit to the data path unit
+  // For example the control unit decodes an instruction and informs the data path unit
+  // about the alu function
+  c.io.ctl <> d.io.ctl
 }
