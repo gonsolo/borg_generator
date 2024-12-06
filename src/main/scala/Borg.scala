@@ -165,7 +165,9 @@ class BorgCoreIo(implicit val p: Parameters, val conf: BorgCoreParams) extends B
   // TODO
 }
 
-case class BorgCoreParams() {}
+case class BorgCoreParams(
+  xprlen: Int = 32
+) {}
 
 class DatToCtlIo() extends Bundle() {
   val inst   = Output(UInt(32.W))
@@ -178,7 +180,7 @@ trait ScalarOpConstants
   val ALU_ADD = 1.asUInt(4.W) // add alu function
 }
 
-object Constants extends ScalarOpConstants {}
+object Constants extends ScalarOpConstants with RISCVConstants {}
 
 import Constants._
 
@@ -224,17 +226,58 @@ class CtlToDatIo() extends Bundle() {
   val alu_fun   = Output(UInt(ALU_X.getWidth.W))
 }
 
+class MemResp(data_width: Int) extends Bundle
+{
+  val data = Output(UInt(data_width.W))
+}
 
-class DpathIo() extends Bundle()
+class MemPortIo(data_width: Int) extends Bundle
+{
+  val resp = Flipped(new ValidIO(new MemResp(data_width)))
+}
+
+class DpathIo(implicit val conf: BorgCoreParams) extends Bundle()
 {
   val ctl = Flipped(new CtlToDatIo())
+  val imem = new MemPortIo(conf.xprlen)
+}
+
+trait RISCVConstants {
+  val RS1_MSB = 19
+  val RS1_LSB = 15
 }
 
 class BorgDataPath(implicit val p: Parameters, val conf: BorgCoreParams) extends Module
 {
   val io = IO(new DpathIo())
   io := DontCare
-  // TODO
+
+  val regfile = Mem(32, UInt(conf.xprlen.W))
+
+  val inst = io.imem.resp.bits.data
+
+  val rs1_addr = inst(RS1_MSB, RS1_LSB)
+
+  val rs1_data = regfile(rs1_addr)
+
+  // immediates
+  val imm_i = inst(31, 20)
+
+
+  // sign-extend immediates
+  val imm_i_sext = Cat(Fill(20,imm_i(11)), imm_i)
+
+  // For now: ADDI is always register source 1
+  val alu_op1 = rs1_data
+
+  // For now: ADDI is always immediate
+  val alu_op2 = imm_i_sext
+
+  val alu_out = Wire(UInt(conf.xprlen.W))
+
+  alu_out := MuxCase(0.U, Array(
+    (io.ctl.alu_fun === ALU_ADD) -> (alu_op1 + alu_op2).asUInt
+    ))
 }
 
 class BorgCore(implicit val p: Parameters, val conf: BorgCoreParams)
