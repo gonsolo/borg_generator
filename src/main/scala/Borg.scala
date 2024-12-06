@@ -245,6 +245,8 @@ class DpathIo(implicit val conf: BorgCoreParams) extends Bundle()
 }
 
 trait RISCVConstants {
+  val RD_MSB = 11
+  val RD_LSB = 7
   val RS1_MSB = 19
   val RS1_LSB = 15
 }
@@ -265,7 +267,6 @@ class BorgDataPath(implicit val p: Parameters, val conf: BorgCoreParams) extends
   // immediates
   val imm_i = inst(31, 20)
 
-
   // sign-extend immediates
   val imm_i_sext = Cat(Fill(20,imm_i(11)), imm_i)
 
@@ -280,6 +281,21 @@ class BorgDataPath(implicit val p: Parameters, val conf: BorgCoreParams) extends
   alu_out := MuxCase(0.U, unsafeWrapArray(Array(
       (io.ctl.alu_fun === ALU_ADD) -> (alu_op1 + alu_op2).asUInt
     )))
+
+  val wb_data = Wire(UInt(conf.xprlen.W))
+
+  wb_data := alu_out
+
+  // Writeback write enable
+  val wb_wen = true.B // TODO
+
+  // The address to write back to
+  val wb_addr = inst(RD_MSB, RD_LSB)
+
+  when (wb_wen && (wb_addr =/= 0.U))
+  {
+    regfile(wb_addr) := wb_data
+  }
 }
 
 class BorgCore(implicit val p: Parameters, val conf: BorgCoreParams)
