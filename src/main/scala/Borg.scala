@@ -241,6 +241,7 @@ class MemPortIo(data_width: Int) extends Bundle
 class DpathIo(implicit val conf: BorgCoreParams) extends Bundle()
 {
   val ctl = Flipped(new CtlToDatIo())
+  val dat = new DatToCtlIo()
   val imem = new MemPortIo(conf.xprlen)
 }
 
@@ -296,6 +297,9 @@ class BorgDataPath(implicit val p: Parameters, val conf: BorgCoreParams) extends
   {
     regfile(wb_addr) := wb_data
   }
+
+  // To control unit
+  io.dat.inst := inst
 }
 
 class BorgCore(implicit val p: Parameters, val conf: BorgCoreParams)
