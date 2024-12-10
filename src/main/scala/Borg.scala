@@ -164,7 +164,7 @@ class WithBorg() extends Config((site, here, up) => {
 
 class BorgCoreIo(implicit val p: Parameters, val conf: BorgCoreParams) extends Bundle
 {
-  // TODO
+  val reset_vector = Input(UInt(32.W))
 }
 
 case class BorgCoreParams(
