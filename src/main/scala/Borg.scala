@@ -165,6 +165,8 @@ class WithBorg() extends Config((site, here, up) => {
 class BorgCoreIo(implicit val p: Parameters, val conf: BorgCoreParams) extends Bundle
 {
   val reset_vector = Input(UInt(32.W))
+
+  val debug_out = Output(UInt(32.W))
 }
 
 case class BorgCoreParams(
@@ -242,6 +244,9 @@ class BorgDpathIo(implicit val conf: BorgCoreParams) extends Bundle()
   val ctl = Flipped(new CtlToDatIo())
   val dat = new DatToCtlIo()
   val imem = new MemPortIo(conf.xprlen)
+  val reset_vector = Input(UInt())
+
+  val debug_out = Output(UInt(32.W))
 }
 
 trait RISCVConstants {
@@ -255,6 +260,21 @@ class BorgDataPath(implicit val p: Parameters, val conf: BorgCoreParams) extends
 {
   val io = IO(new BorgDpathIo())
   io := DontCare
+
+  val pc_plus4 = Wire(UInt(32.W))
+
+  val pc_next = Wire(UInt(32.W))
+  pc_next := pc_plus4
+
+  // The program counter
+  val pc_reg = RegInit(io.reset_vector)
+  when (true.B) { // No stall
+    pc_reg := pc_next
+  }
+  // Get the counter out for testing
+  io.debug_out := pc_reg
+
+  pc_plus4 := (pc_reg + 4.asUInt(32.W))
 
   val regfile = Mem(32, UInt(conf.xprlen.W))
 
@@ -308,6 +328,8 @@ class BorgCore(implicit val p: Parameters, val conf: BorgCoreParams) extends Mod
   val c  = Module(new BorgControlPath())
   val d  = Module(new BorgDataPath())
 
+  io.debug_out := d.io.debug_out
+
   // TMP
   d.io.imem.resp := DontCare
 
@@ -316,4 +338,6 @@ class BorgCore(implicit val p: Parameters, val conf: BorgCoreParams) extends Mod
   // about the alu function
   c.io.ctl <> d.io.ctl
   c.io.dat <> d.io.dat
+
+  d.io.reset_vector := io.reset_vector
 }

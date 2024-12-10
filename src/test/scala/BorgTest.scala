@@ -21,15 +21,14 @@ class BorgSpec extends AnyFlatSpec {
     simulate(new BorgCore()(params, conf)) { core =>
       core.io.reset_vector.poke(0.U)
       core.clock.step()
-      println("After 1 step.")
+      core.io.debug_out.expect(4.U)
       core.clock.step()
-      println("After 2 steps.")
+      core.io.debug_out.expect(8.U)
       core.clock.step()
-      println("After 3 steps.")
+      core.io.debug_out.expect(12.U)
       core.clock.step()
-      println("After 4 steps.")
-      core.clock.step()
-      println("Steps ok.")
+      core.io.debug_out.expect(16.U)
+      println("Last pc counter: " + core.io.debug_out.peek().litValue)
     }
   }
 }
