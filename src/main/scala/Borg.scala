@@ -171,7 +171,7 @@ case class BorgCoreParams(
   xprlen: Int = 32
 ) {}
 
-class DatToCtlIo() extends Bundle() {
+class DatToCtlIo() extends Bundle {
   val inst   = Output(UInt(32.W))
 }
 
@@ -186,7 +186,7 @@ object Constants extends ScalarOpConstants with RISCVConstants {}
 
 import Constants._
 
-class BorgControlPathIo() extends Bundle() {
+class BorgControlPathIo() extends Bundle {
   val dat = Flipped(new DatToCtlIo())
   val ctl = new CtlToDatIo()
 }
@@ -202,8 +202,7 @@ class BorgControlPath(implicit val conf: BorgCoreParams) extends Module
 {
   // Input and output signals for the control unit
   val io = IO(new BorgControlPathIo())
-  io := DontCare
-
+  io.ctl.alu_fun := DontCare
   // Look up the incoming instruction and set the ALU operation accordingly
   val csignals = ListLookup(
     io.dat.inst,
@@ -225,7 +224,7 @@ class BorgControlPath(implicit val conf: BorgCoreParams) extends Module
 class CtlToDatIo() extends Bundle() {
 
   // The control unit decodes the instruction and set the correspong alu function for the data path unit
-  val alu_fun   = Output(UInt(ALU_X.getWidth.W))
+  val alu_fun = Output(UInt(ALU_X.getWidth.W))
 }
 
 class MemResp(data_width: Int) extends Bundle
@@ -238,7 +237,7 @@ class MemPortIo(data_width: Int) extends Bundle
   val resp = Flipped(new ValidIO(new MemResp(data_width)))
 }
 
-class DpathIo(implicit val conf: BorgCoreParams) extends Bundle()
+class BorgDpathIo(implicit val conf: BorgCoreParams) extends Bundle()
 {
   val ctl = Flipped(new CtlToDatIo())
   val dat = new DatToCtlIo()
@@ -254,7 +253,7 @@ trait RISCVConstants {
 
 class BorgDataPath(implicit val p: Parameters, val conf: BorgCoreParams) extends Module
 {
-  val io = IO(new DpathIo())
+  val io = IO(new BorgDpathIo())
   io := DontCare
 
   val regfile = Mem(32, UInt(conf.xprlen.W))
@@ -302,15 +301,19 @@ class BorgDataPath(implicit val p: Parameters, val conf: BorgCoreParams) extends
   io.dat.inst := inst
 }
 
-class BorgCore(implicit val p: Parameters, val conf: BorgCoreParams)
+class BorgCore(implicit val p: Parameters, val conf: BorgCoreParams) extends Module
 {
   val io = IO(new BorgCoreIo())
-  io := DontCare
+  //io := DontCare
   val c  = Module(new BorgControlPath())
   val d  = Module(new BorgDataPath())
+
+  // TMP
+  d.io.imem.resp := DontCare
 
   // Connect the control unit to the data path unit
   // For example the control unit decodes an instruction and informs the data path unit
   // about the alu function
   c.io.ctl <> d.io.ctl
+  c.io.dat <> d.io.dat
 }

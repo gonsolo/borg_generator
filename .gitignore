@@ -1,7 +1,7 @@
 /.bsp
-/.metals
+.metals
 /target
-/src/main/scala/.scala-build
+.scala-build
 /project/build.properties
 /project/project
 /project/target
