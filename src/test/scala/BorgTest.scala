@@ -4,9 +4,8 @@ import org.scalatest.flatspec.AnyFlatSpec
 import borg._
 import org.chipsalliance.cde.config.Parameters
 
-class BorgSpec extends AnyFlatSpec {
+class ResetTest extends AnyFlatSpec {
   behavior of "BorgCore"
-
   it should "be fully connected" in {
     val params = new WithBorg
     val conf = new BorgCoreParams
@@ -14,7 +13,10 @@ class BorgSpec extends AnyFlatSpec {
       println("Reset ok.")
     }
   }
+}
 
+class StepTest extends AnyFlatSpec {
+  behavior of "BorgCore"
   it should "reset and step" in {
     val params = new WithBorg
     val conf = new BorgCoreParams
@@ -28,7 +30,14 @@ class BorgSpec extends AnyFlatSpec {
       core.io.debug_out.expect(12.U)
       core.clock.step()
       core.io.debug_out.expect(16.U)
-      println("Last pc counter: " + core.io.debug_out.peek().litValue)
+      core.reset.poke(1)
+      core.clock.step()
+      core.reset.poke(0)
+      core.clock.step()
+      core.io.debug_out.expect(4.U)
+      core.clock.step()
+      core.io.debug_out.expect(8.U)
+      println("Pc counter now: " + core.io.debug_out.peek().litValue)
     }
   }
 }
