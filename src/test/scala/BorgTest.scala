@@ -41,3 +41,14 @@ class StepTest extends AnyFlatSpec {
     }
   }
 }
+
+class TileTest extends AnyFlatSpec {
+  behavior of "BorgTile"
+  it should "initialize" in {
+    val params = new WithBorg
+    val conf = new BorgCoreParams
+    simulate(new BorgTile()(params, conf)) { tile =>
+      // TODO
+    }
+  }
+}

@@ -164,6 +164,7 @@ class WithBorg() extends Config((site, here, up) => {
 
 class BorgCoreIo(implicit val p: Parameters, val conf: BorgCoreParams) extends Bundle
 {
+  val imem = new MemPortIo(32)
   val reset_vector = Input(UInt(32.W))
 
   val debug_out = Output(UInt(32.W))
@@ -228,6 +229,10 @@ class CtlToDatIo() extends Bundle() {
   // The control unit decodes the instruction and set the correspong alu function for the data path unit
   val alu_fun = Output(UInt(ALU_X.getWidth.W))
 }
+class MemReq(data_width: Int) extends Bundle
+{
+  val addr = Output(UInt(32.W))
+}
 
 class MemResp(data_width: Int) extends Bundle
 {
@@ -236,6 +241,7 @@ class MemResp(data_width: Int) extends Bundle
 
 class MemPortIo(data_width: Int) extends Bundle
 {
+  val req = new DecoupledIO(new MemReq(data_width))
   val resp = Flipped(new ValidIO(new MemResp(data_width)))
 }
 
@@ -275,6 +281,9 @@ class BorgDataPath(implicit val p: Parameters, val conf: BorgCoreParams) extends
   io.debug_out := pc_reg
 
   pc_plus4 := (pc_reg + 4.asUInt(32.W))
+
+  io.imem.req.bits.addr := pc_reg
+  io.imem.req.valid := true.B
 
   val regfile = Mem(32, UInt(conf.xprlen.W))
 
@@ -339,5 +348,15 @@ class BorgCore(implicit val p: Parameters, val conf: BorgCoreParams) extends Mod
   c.io.ctl <> d.io.ctl
   c.io.dat <> d.io.dat
 
+  io.imem <> d.io.imem
+
   d.io.reset_vector := io.reset_vector
+}
+
+class BorgTile(implicit val p: Parameters, val conf: BorgCoreParams) extends Module
+{
+  val borgCore = Module(new BorgCore())
+  borgCore.io := DontCare
+  def dummy_addi_instruction = BitPat.bitPatToUInt(BitPat("b00000000000000000000000000010011"))
+  val rom = VecInit(dummy_addi_instruction)
 }
