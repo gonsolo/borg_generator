@@ -1,4 +1,4 @@
-ThisBuild / scalaVersion     := "2.13.12"
+ThisBuild / scalaVersion     := "2.13.15"
 ThisBuild / version          := "0.1"
 ThisBuild / organization     := "org.gonsolo"
 
@@ -10,7 +10,7 @@ lazy val root = (project in file("."))
     libraryDependencies ++= Seq(
       "org.chipsalliance" %% "chisel" % chisel6Version,
       "edu.berkeley.cs" %% "rocketchip-6.0.0" % "1.6-6.0.0-1b9f43352-SNAPSHOT",
-      "ch.epfl.scala" %% "bloop-config" % "1.5.5"
+      "org.scalatest" %% "scalatest" % "3.2.19" % "test"
     ),
     scalacOptions ++= Seq(
       "-deprecation",

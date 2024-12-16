@@ -1,5 +1,7 @@
 package borg
 
+import scala.collection.immutable.ArraySeq.unsafeWrapArray
+
 import chisel3._
 import chisel3.util._
 
@@ -143,68 +145,34 @@ class WithBorg() extends Config((site, here, up) => {
 
 class BorgCoreIo(implicit val p: Parameters, val conf: BorgCoreParams) extends Bundle
 {
-  // TODO
+  val imem = new MemPortIo(32)
+  val reset_vector = Input(UInt(32.W))
+
+  val debug_out = Output(UInt(32.W))
 }
 
-case class BorgCoreParams() {}
+case class BorgCoreParams(
+  xprlen: Int = 32
+) {}
 
-class DatToCtlIo() extends Bundle() {
+class DatToCtlIo() extends Bundle {
   val inst   = Output(UInt(32.W))
-}
-
-class BorgControlPathIo() extends Bundle() {
-  val dat  = Flipped(new DatToCtlIo())
-}
-
-trait MemoryOpConstants
-{
-  val MT_X  = 0.asUInt(3.W)
-
-  val M_X   = "b0".asUInt(1.W)
 }
 
 trait ScalarOpConstants
 {
-  val Y = true.B
-  val N = false.B
-
-  val BR_N   = 0.asUInt(4.W)
-
-  // RS1 Operand Select Signal
-  val OP1_RS1 = 0.asUInt(2.W) // Register Source #1
-  val OP1_X   = 0.asUInt(2.W)
-
-  // RS2 Operand Select Signal
-  val OP2_IMI = 1.asUInt(2.W) // immediate, I-type
-
-  val OP2_X   = 0.asUInt(2.W)
-
-  // Register File Write Enable Signal
-  val REN_0   = false.B
-  val REN_1   = true.B
-  val REN_X   = false.B
-
   // ALU Operation Signal
-  val ALU_ADD = 1.asUInt(4.W)
-  val ALU_X   = 0.asUInt(4.W)
-
-  // Writeback Select Signal
-  val WB_ALU  = 0.asUInt(2.W)
-
-  val WB_X    = 0.asUInt(2.W)
-
-  val MEN_0   = false.B
-
+  val ALU_X   = 0.asUInt(4.W) // unspecified alu function
+  val ALU_ADD = 1.asUInt(4.W) // add alu function
 }
 
-object Constants extends ScalarOpConstants with MemoryOpConstants {}
+object Constants extends ScalarOpConstants with RISCVConstants {}
 
 import Constants._
 
-object CSR
-{
-  val SZ = 3
-  def N = 0.U(SZ.W)
+class BorgControlPathIo() extends Bundle {
+  val dat = Flipped(new DatToCtlIo())
+  val ctl = new CtlToDatIo()
 }
 
 object Instructions
@@ -216,27 +184,160 @@ import Instructions._
 
 class BorgControlPath(implicit val conf: BorgCoreParams) extends Module
 {
+  // Input and output signals for the control unit
   val io = IO(new BorgControlPathIo())
-  io := DontCare
-
+  io.ctl.alu_fun := DontCare
+  // Look up the incoming instruction and set the ALU operation accordingly
   val csignals = ListLookup(
     io.dat.inst,
-    List(N, BR_N  , OP1_X  ,  OP2_X  , ALU_X   , WB_X   , REN_0, MEN_0, M_X  , MT_X,  CSR.N),
+    List(              ALU_X),
     Array(
-      ADDI    -> List(Y, BR_N  , OP1_RS1, OP2_IMI , ALU_ADD ,  WB_ALU, REN_1, MEN_0, M_X  , MT_X,  CSR.N)
+    // instruction   | alu function
+      ADDI    -> List( ALU_ADD)
     )
   )
+
+  // Put the alu function into a variable
+  val cs_alu_fun :: Nil = csignals
+
+  // Set the data path control signals
+  io.ctl.alu_fun := cs_alu_fun
+}
+
+// Signals from the control unit to the data path unit
+class CtlToDatIo() extends Bundle() {
+
+  // The control unit decodes the instruction and set the correspong alu function for the data path unit
+  val alu_fun = Output(UInt(ALU_X.getWidth.W))
+}
+class MemReq(data_width: Int) extends Bundle
+{
+  val addr = Output(UInt(32.W))
+}
+
+class MemResp(data_width: Int) extends Bundle
+{
+  val data = Output(UInt(data_width.W))
+}
+
+class MemPortIo(data_width: Int) extends Bundle
+{
+  val req = new DecoupledIO(new MemReq(data_width))
+  val resp = Flipped(new ValidIO(new MemResp(data_width)))
+}
+
+class BorgDpathIo(implicit val conf: BorgCoreParams) extends Bundle()
+{
+  val ctl = Flipped(new CtlToDatIo())
+  val dat = new DatToCtlIo()
+  val imem = new MemPortIo(conf.xprlen)
+  val reset_vector = Input(UInt())
+
+  val debug_out = Output(UInt(32.W))
+}
+
+trait RISCVConstants {
+  val RD_MSB = 11
+  val RD_LSB = 7
+  val RS1_MSB = 19
+  val RS1_LSB = 15
 }
 
 class BorgDataPath(implicit val p: Parameters, val conf: BorgCoreParams) extends Module
 {
-  // TODO
+  val io = IO(new BorgDpathIo())
+  io := DontCare
+
+  val pc_plus4 = Wire(UInt(32.W))
+
+  val pc_next = Wire(UInt(32.W))
+  pc_next := pc_plus4
+
+  // The program counter
+  val pc_reg = RegInit(io.reset_vector)
+  when (true.B) { // No stall
+    pc_reg := pc_next
+  }
+  // Get the counter out for testing
+  io.debug_out := pc_reg
+
+  pc_plus4 := (pc_reg + 4.asUInt(32.W))
+
+  io.imem.req.bits.addr := pc_reg
+  io.imem.req.valid := true.B
+
+  val regfile = Mem(32, UInt(conf.xprlen.W))
+
+  val inst = io.imem.resp.bits.data
+
+  val rs1_addr = inst(RS1_MSB, RS1_LSB)
+
+  val rs1_data = regfile(rs1_addr)
+
+  // immediates
+  val imm_i = inst(31, 20)
+
+  // sign-extend immediates
+  val imm_i_sext = Cat(Fill(20,imm_i(11)), imm_i)
+
+  // For now: ADDI is always register source 1
+  val alu_op1 = rs1_data
+
+  // For now: ADDI is always immediate
+  val alu_op2 = imm_i_sext
+
+  val alu_out = Wire(UInt(conf.xprlen.W))
+
+  alu_out := MuxCase(0.U, unsafeWrapArray(Array(
+      (io.ctl.alu_fun === ALU_ADD) -> (alu_op1 + alu_op2).asUInt
+    )))
+
+  val wb_data = Wire(UInt(conf.xprlen.W))
+
+  wb_data := alu_out
+
+  // Writeback write enable
+  val wb_wen = true.B // TODO
+
+  // The address to write back to
+  val wb_addr = inst(RD_MSB, RD_LSB)
+
+  when (wb_wen && (wb_addr =/= 0.U))
+  {
+    regfile(wb_addr) := wb_data
+  }
+
+  // To control unit
+  io.dat.inst := inst
 }
 
-class BorgCore(implicit val p: Parameters, val conf: BorgCoreParams)
+class BorgCore(implicit val p: Parameters, val conf: BorgCoreParams) extends Module
 {
   val io = IO(new BorgCoreIo())
-  io := DontCare
+  //io := DontCare
   val c  = Module(new BorgControlPath())
   val d  = Module(new BorgDataPath())
+
+  io.debug_out := d.io.debug_out
+
+  // TMP
+  d.io.imem.resp := DontCare
+
+  // Connect the control unit to the data path unit
+  // For example the control unit decodes an instruction and informs the data path unit
+  // about the alu function
+  c.io.ctl <> d.io.ctl
+  c.io.dat <> d.io.dat
+
+  io.imem <> d.io.imem
+
+  d.io.reset_vector := io.reset_vector
+}
+
+class BorgTile(implicit val p: Parameters, val conf: BorgCoreParams) extends Module
+{
+  val borgCore = Module(new BorgCore())
+  borgCore.io := DontCare
+  def dummy_addi_instruction = BitPat.bitPatToUInt(BitPat("b00000000000000000000000000010011"))
+  val rom = VecInit(dummy_addi_instruction)
 }
