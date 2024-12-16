@@ -31,15 +31,6 @@ class BorgIO(val w: Int) extends Bundle {
   val output_ready = Input(Bool())
   val output_valid = Output(Bool())
   val borg_result = Output(UInt(w.W))
-  val busy = Output(Bool())
-}
-
-class BorgTopIO() extends Bundle {
-  val borg_busy = Output(Bool())
-}
-
-trait HasBorgTopIO {
-  def io: BorgTopIO
 }
 
 class BorgMMIOChiselModule(val w: Int) extends Module {
@@ -72,8 +63,6 @@ class BorgMMIOChiselModule(val w: Int) extends Module {
       tmp := tmp - borg_result
     }
   }
-
-  io.busy := state =/= s_idle
 }
 
 class BorgTL(params: BorgParams, beatBytes: Int)(implicit p: Parameters)
@@ -91,8 +80,7 @@ class BorgTL(params: BorgParams, beatBytes: Int)(implicit p: Parameters)
 
   override lazy val module = new BorgImpl
 
-  class BorgImpl extends Impl with HasBorgTopIO {
-    val io = IO(new BorgTopIO)
+  class BorgImpl extends Impl {
     withClockAndReset(clock, reset) {
       val x = Reg(UInt(params.width.W))
       val y = Wire(new DecoupledIO(UInt(params.width.W)))
@@ -117,7 +105,6 @@ class BorgTL(params: BorgParams, beatBytes: Int)(implicit p: Parameters)
       impl_io.output_ready := borg_result.ready
 
       status := Cat(impl_io.input_ready, impl_io.output_valid)
-      io.borg_busy := impl_io.busy
 
       registerNode.regmap(
         0x00 -> Seq(RegField.r(2, status)),
@@ -133,7 +120,7 @@ trait CanHavePeripheryBorg { this: BaseSubsystem =>
   private val portName = "borgPort"
   private val pbus = locateTLBusWrapper(PBUS)
 
-  val borg_busy = p(BorgKey) match {
+  p(BorgKey) match {
     case Some(params) => {
       val borg = {
         val borg = LazyModule(new BorgTL(params, pbus.beatBytes)(p))
@@ -141,12 +128,6 @@ trait CanHavePeripheryBorg { this: BaseSubsystem =>
         pbus.coupleTo(portName) { borg.registerNode := TLFragmenter(pbus.beatBytes, pbus.blockBytes) := _ }
         borg
       }
-      val borg_busy = InModuleBody {
-        val busy = IO(Output(Bool())).suggestName("borg_busy")
-        busy := borg.module.io.borg_busy
-        busy
-      }
-      Some(borg_busy)
     }
     case None => None
   }
