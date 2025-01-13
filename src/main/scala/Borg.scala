@@ -16,6 +16,7 @@ import org.chipsalliance.diplomacy.lazymodule.{InModuleBody, LazyModule}
 
 case class BorgParams(
   address: BigInt = 0x4000,
+  size: BigInt = 0x1000,
   width: Int = 32)
 
 case object BorgKey extends Field[Option[BorgParams]](None)
@@ -31,14 +32,6 @@ class BorgIO(val w: Int) extends Bundle {
   val output_valid = Output(Bool())
   val borg_result = Output(UInt(w.W))
   val busy = Output(Bool())
-}
-
-class BorgTopIO() extends Bundle {
-  val borg_busy = Output(Bool())
-}
-
-trait HasBorgTopIO {
-  def io: BorgTopIO
 }
 
 class BorgMMIOChiselModule(val w: Int) extends Module {
@@ -75,68 +68,6 @@ class BorgMMIOChiselModule(val w: Int) extends Module {
   io.busy := state =/= s_idle
 }
 
-class BorgTL(params: BorgParams, beatBytes: Int)(implicit p: Parameters)
-  extends ClockSinkDomain(ClockSinkParameters())(p) {
-
-  val device = new SimpleDevice("borg-device", Seq("borg,borg-1"))
-  val registerNode = TLRegisterNode(
-    Seq(AddressSet(params.address, 4096-1)),
-    device,
-    "reg/control",
-    beatBytes=beatBytes)
-  val clientNode = TLClientNode(Seq(TLMasterPortParameters.v1(Seq(TLMasterParameters.v1(
-    name = "dma-test",
-    sourceId = IdRange(0, 1))))))
-
-  override lazy val module = new BorgImpl
-
-  class BorgImpl extends Impl with HasBorgTopIO {
-    val io = IO(new BorgTopIO)
-    withClockAndReset(clock, reset) {
-      val x = Reg(UInt(params.width.W))
-      val y = Wire(new DecoupledIO(UInt(params.width.W)))
-      val borg_result = Wire(new DecoupledIO(UInt(params.width.W)))
-      val status = Wire(UInt(2.W))
-
-      val start_loading = RegInit(0.U(1.W))
-
-      val loader_io = {
-        val loader = Module(new BorgLoader())
-        loader.io
-      }
-      loader_io.start_loading := start_loading
-
-      val impl_io = {
-        val impl = Module(new BorgMMIOChiselModule(params.width))
-        impl.io
-      }
-
-      impl_io.clock := clock
-      impl_io.reset := reset.asBool
-
-      impl_io.x := x
-      impl_io.y := y.bits
-      impl_io.input_valid := y.valid
-      y.ready := impl_io.input_ready
-
-      borg_result.bits := impl_io.borg_result
-      borg_result.valid := impl_io.output_valid
-      impl_io.output_ready := borg_result.ready
-
-      status := Cat(impl_io.input_ready, impl_io.output_valid)
-      io.borg_busy := impl_io.busy
-
-      registerNode.regmap(
-        0x00 -> Seq(RegField.r(2, status)),
-        0x04 -> Seq(RegField.w(params.width, x)),
-        0x08 -> Seq(RegField.w(params.width, y)),
-        0x0C -> Seq(RegField.r(params.width, borg_result)),
-        0x10 -> Seq(RegField.w(1, start_loading))
-      )
-    }
-  }
-}
-
 trait CanHavePeripheryBorg { this: BaseSubsystem =>
   private val portName = "borgPort"
   private val pbus = locateTLBusWrapper(PBUS)
@@ -144,7 +75,7 @@ trait CanHavePeripheryBorg { this: BaseSubsystem =>
   val borg_busy = p(BorgKey) match {
     case Some(params) => {
       val borg = {
-        val borg = LazyModule(new BorgTL(params, pbus.beatBytes)(p))
+        val borg = LazyModule(new BorgTileLink(params, pbus.beatBytes)(p))
         borg.clockNode := pbus.fixedClockNode
         pbus.coupleTo(portName) { borg.registerNode := TLFragmenter(pbus.beatBytes, pbus.blockBytes) := _ }
         borg
