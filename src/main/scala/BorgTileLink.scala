@@ -37,6 +37,8 @@ class BorgTileLink(params: BorgParams, beatBytes: Int)(implicit p: Parameters)
 
   class BorgImpl extends Impl with HasBorgTopIO {
     val io = IO(new BorgTopIO)
+    io.borg_busy := false.B
+
     withClockAndReset(clock, reset) {
 
       val (mem, edge) = clientNode.out(0)
