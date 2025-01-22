@@ -25,7 +25,7 @@ class BorgTileLink(params: BorgParams, beatBytes: Int)(implicit p: Parameters)
 
   val device = new SimpleDevice("borg-device", Seq("borg,borg-1"))
   val registerNode = TLRegisterNode(
-    Seq(AddressSet(params.address, 4096-1)),
+    Seq(AddressSet(params.regAddress, 4096-1)),
     device,
     "reg/control",
     beatBytes=beatBytes)
@@ -64,7 +64,7 @@ class BorgTileLink(params: BorgParams, beatBytes: Int)(implicit p: Parameters)
       dataOut := mem.d.bits.data
 
       when (state === s_init && start_loading === 1.U) {
-        addr := params.address.U
+        addr := params.dmaAddress.U
         bytesLeft := params.size.U
         state := s_read
       }

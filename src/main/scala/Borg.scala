@@ -40,8 +40,7 @@ class BorgIO(val w: Int) extends Bundle {
   //val borg_result = Output(UInt(w.W))
 }
 
-//class BorgDataLoader(val w: Int) extends Module {
-class BorgMMIOChiselModule(val w: Int) extends Module {
+class BorgDataLoader(val w: Int) extends Module {
   val io = IO(new BorgIO(w))
   val s_idle :: s_run :: Nil = Enum(2)
   val state = RegInit(s_idle)
@@ -57,73 +56,6 @@ class BorgMMIOChiselModule(val w: Int) extends Module {
   }
 
   io.done := state === s_idle
-}
-
-class BorgTL(params: BorgParams, beatBytes: Int)(implicit p: Parameters)
-  extends ClockSinkDomain(ClockSinkParameters())(p) {
-
-  val device = new SimpleDevice("borg-device", Seq("borg,borg-1"))
-  val registerNode = TLRegisterNode(
-    Seq(AddressSet(params.regAddress, 4096-1)),
-    device,
-    "reg/control",
-    beatBytes=beatBytes)
-  val clientNode = TLClientNode(Seq(TLMasterPortParameters.v1(Seq(TLMasterParameters.v1(
-    name = "borg-dma-test",
-    sourceId = IdRange(0, 1))))))
-
-  override lazy val module = new BorgImpl(this)
-
-  class BorgImpl(outer: BorgTL) extends Impl {
-
-    // DMA
-    val (tl_out, edge) = outer.clientNode.out(0)
-
-    val (legal, get_bundle) = edge.Get(0.U, params.dmaAddress.U, log2Ceil(params.dmaBytes).U)
-
-    // Management
-    withClockAndReset(clock, reset) {
-
-      // 0: idle or running
-      // 1: done
-      val status = Wire(UInt(1.W))
-
-      //val x = Reg(UInt(params.width.W))
-      // kick.valid is set on write
-      val kick = Wire(new DecoupledIO(Bool())) 
-      //val y = Wire(new DecoupledIO(UInt(params.width.W)))
-      //val borg_result = Wire(new DecoupledIO(UInt(params.width.W)))
-
-      val data_loader_io = {
-        val data_loader= Module(new BorgDataLoader(params.width))
-        data_loader.io
-      }
-
-      data_loader_io.clock := clock
-      data_loader_io.reset := reset.asBool
-
-      data_loader_io.start := kick.valid
-
-      //impl_io.x := x
-      //impl_io.y := y.bits
-      //impl_io.input_valid := y.valid
-      //y.ready := impl_io.input_ready
-
-      //borg_result.bits := impl_io.borg_result
-      //borg_result.valid := impl_io.output_valid
-      //impl_io.output_ready := borg_result.ready
-
-      //status := Cat(impl_io.input_ready, impl_io.output_valid)
-      status := data_loader_io.done
-
-      registerNode.regmap(
-        0x00 -> Seq(RegField.r(1, status)),
-        0x04 -> Seq(RegField.w(1, kick)),     // set on write
-        //0x08 -> Seq(RegField.w(params.width, y)),
-        //0x0C -> Seq(RegField.r(params.width, borg_result))
-      )
-    }
-  }
 }
 
 trait CanHavePeripheryBorg { this: BaseSubsystem =>
