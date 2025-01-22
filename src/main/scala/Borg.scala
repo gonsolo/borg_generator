@@ -59,7 +59,6 @@ class BorgDataLoader(val w: Int) extends Module {
 }
 
 trait CanHavePeripheryBorg { this: BaseSubsystem =>
-  private val portName = "borgPort"
   private val pbus = locateTLBusWrapper(PBUS)
 
   p(BorgKey) match {
@@ -67,7 +66,8 @@ trait CanHavePeripheryBorg { this: BaseSubsystem =>
       val borg = {
         val borg = LazyModule(new BorgTileLink(params, pbus.beatBytes)(p))
         borg.clockNode := pbus.fixedClockNode
-        pbus.coupleTo(portName) { borg.registerNode := TLFragmenter(pbus.beatBytes, pbus.blockBytes) := _ }
+        pbus.coupleTo("borgPort") { borg.registerNode := TLFragmenter(pbus.beatBytes, pbus.blockBytes) := _ }
+        pbus.coupleFrom("borgPortDma") { _ := borg.clientNode }
         borg
       }
     }
