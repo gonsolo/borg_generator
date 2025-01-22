@@ -79,11 +79,16 @@ class BorgTileLink(params: BorgParams, beatBytes: Int)(implicit p: Parameters)
         state := Mux(bytesLeft === 0.U, s_done, s_read)
       }
 
+      when (state === s_done) {
+        start_loading := 0.U
+        //state := s_init
+      }
+
       registerNode.regmap(
-        0x00 -> Seq(RegField.w(1, start_loading))
+        0x00 -> Seq(RegField.w(1, start_loading)),
+        0x01 -> Seq(RegField.r(state.getWidth, state))
       )
     }
   }
 }
-
 
