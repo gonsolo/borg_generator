@@ -52,6 +52,9 @@ class BorgTileLink(params: BorgParams, beatBytes: Int)(implicit p: Parameters)
       val s_init :: s_read :: s_resp :: s_done :: Nil = Enum(4)
       val state = RegInit(s_init)
 
+      val test1 = RegInit(666.U(32.W))
+      val test2 = RegInit(1234567.U(32.W))
+
       val addr = Reg(UInt(addrBits.W))
       val bytesLeft = Reg(UInt(log2Ceil(params.size+1).W))
 
@@ -87,8 +90,10 @@ class BorgTileLink(params: BorgParams, beatBytes: Int)(implicit p: Parameters)
       }
 
       registerNode.regmap(
-        0x00 -> Seq(RegField.w(1, start_loading)),
-        0x01 -> Seq(RegField.r(state.getWidth, state))
+        0x00 -> Seq(RegField.r(32, test1)),
+        0x20 -> Seq(RegField.r(32, test2))
+        //0x00 -> Seq(RegField.w(1, start_loading)),
+        //0x01 -> Seq(RegField.r(state.getWidth, state))
       )
     }
   }
