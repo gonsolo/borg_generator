@@ -3,7 +3,7 @@ package borg
 import chisel3._
 import chisel3.util._
 
-import freechips.rocketchip.diplomacy.{AddressSet, IdRange}
+import freechips.rocketchip.diplomacy.{AddressSet, IdRange, LazyModule, LazyModuleImp}
 import freechips.rocketchip.prci.{ClockSinkDomain, ClockSinkParameters}
 import freechips.rocketchip.regmapper.{HasRegMap, RegField}
 import freechips.rocketchip.resources.{SimpleDevice}
@@ -21,7 +21,8 @@ trait HasBorgTopIO {
 }
 
 class BorgTileLink(params: BorgParams, beatBytes: Int)(implicit p: Parameters)
-  extends ClockSinkDomain(ClockSinkParameters())(p) {
+  extends LazyModule {
+  //extends ClockSinkDomain(ClockSinkParameters())(p) {
 
   val device = new SimpleDevice("borg-device", Seq("borg,borg-1"))
   val registerNode = TLRegisterNode(
@@ -35,7 +36,8 @@ class BorgTileLink(params: BorgParams, beatBytes: Int)(implicit p: Parameters)
 
   override lazy val module = new BorgImpl
 
-  class BorgImpl extends Impl with HasBorgTopIO {
+  //class BorgImpl extends Impl with HasBorgTopIO {
+  class BorgImpl extends LazyModuleImp(this) with HasBorgTopIO {
     val io = IO(new BorgTopIO)
     io.borg_busy := false.B
 

@@ -65,7 +65,7 @@ trait CanHavePeripheryBorg { this: BaseSubsystem =>
     case Some(params) => {
       val borg = {
         val borg = LazyModule(new BorgTileLink(params, pbus.beatBytes)(p))
-        borg.clockNode := pbus.fixedClockNode
+        //borg.clockNode := pbus.fixedClockNode
         pbus.coupleTo("borgPort") { borg.registerNode := TLFragmenter(pbus.beatBytes, pbus.blockBytes) := _ }
         pbus.coupleFrom("borgPortDma") { _ := borg.clientNode }
         borg
