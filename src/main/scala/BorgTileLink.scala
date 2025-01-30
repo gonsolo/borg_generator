@@ -39,7 +39,7 @@ class BorgTileLink(params: BorgParams, beatBytes: Int)(implicit p: Parameters)
     val io = IO(new BorgTopIO)
     io.borg_busy := false.B
 
-    withClockAndReset(clock, reset) {
+    //withClockAndReset(clock, reset) {
 
       val (mem, edge) = clientNode.out(0)
       val addrBits = edge.bundle.addressBits
@@ -95,7 +95,7 @@ class BorgTileLink(params: BorgParams, beatBytes: Int)(implicit p: Parameters)
         //0x00 -> Seq(RegField.w(1, start_loading)),
         //0x01 -> Seq(RegField.r(state.getWidth, state))
       )
-    }
+    //}
   }
 }
 
