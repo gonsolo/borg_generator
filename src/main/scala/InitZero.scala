@@ -2,7 +2,7 @@ package borg
 
 import chisel3._
 import chisel3.util._
-import freechips.rocketchip.subsystem.{BaseSubsystem, CacheBlockBytes, FBUS}
+import freechips.rocketchip.subsystem.{BaseSubsystem, CacheBlockBytes, FBUS, PBUS}
 import org.chipsalliance.cde.config.{Parameters, Field, Config}
 import freechips.rocketchip.diplomacy.{IdRange}
 import freechips.rocketchip.tilelink._
@@ -40,10 +40,9 @@ trait CanHavePeripheryBorg { this: BaseSubsystem =>
   implicit val p: Parameters
 
   p(BorgKey) .map { k =>
-    val fbus = locateTLBusWrapper(FBUS)
-    val borg = fbus { LazyModule(new Borg()(p)) }
-    //fbus.coupleFrom("init-zero") { _ := initZero.node }
-    fbus.coupleTo("borg-borg") { borg.node := TLFragmenter(fbus.beatBytes, fbus.blockBytes) := _ }
+    val pbus = locateTLBusWrapper(PBUS)
+    val borg = pbus { LazyModule(new Borg()(p)) }
+    pbus.coupleTo("borg-borg") { borg.node := TLFragmenter(pbus.beatBytes, pbus.blockBytes) := _ }
   }
 }
 
