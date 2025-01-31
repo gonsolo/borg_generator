@@ -81,7 +81,7 @@ trait CanHavePeripheryBorg { this: BaseSubsystem =>
 
   p(BorgKey) .map { k =>
     val fbus = locateTLBusWrapper(FBUS)
-    val borgTileLink= fbus { LazyModule(new BorgTileLink()(p)) }
+    val borgTileLink= fbus { LazyModule(new BorgTileLink(fbus.beatBytes)(p)) }
     fbus.coupleTo("borgPort") { borgTileLink.registerNode := TLFragmenter(fbus.beatBytes, fbus.blockBytes) := _ }
   }
 }
