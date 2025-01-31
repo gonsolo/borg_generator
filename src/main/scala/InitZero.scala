@@ -22,19 +22,18 @@ class Borg(implicit p: Parameters) extends LazyModule {
   val beatBytes = 8
   val node = TLRegisterNode(Seq(AddressSet(regAddress, 4096-1)), device, "reg/control", beatBytes=beatBytes)
 
-  val test1 = RegInit(666.U(32.W))
-  val test2 = RegInit(1234567.U(32.W))
-  node.regmap(
-    0x00 -> Seq(RegField.r(32, test1)),
-    0x20 -> Seq(RegField.r(32, test2))
-  )
-
   lazy val module = new BorgModuleImp(this)
 }
 
 class BorgModuleImp(outer: Borg) extends LazyModuleImp(outer) {
   val config = p(BorgKey).get
 
+  val test1 = RegInit(666.U(32.W))
+  val test2 = RegInit(1234567.U(32.W))
+  outer.node.regmap(
+    0x00 -> Seq(RegField.r(32, test1)),
+    0x20 -> Seq(RegField.r(32, test2))
+  )
 }
 
 trait CanHavePeripheryBorg { this: BaseSubsystem =>
