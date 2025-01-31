@@ -15,11 +15,12 @@ import org.chipsalliance.cde.config.{Parameters, Field, Config}
 import org.chipsalliance.diplomacy.lazymodule.{InModuleBody, LazyModule}
 
 case class BorgParams(
-  regAddress: BigInt = 0x4000,
-  dmaAddress: BigInt = 0x5000,
-  dmaBytes: BigInt = 8,
-  size: BigInt = 0x1000,
-  width: Int = 32)
+  regAddress: BigInt = 0x4000//,
+  //dmaAddress: BigInt = 0x5000,
+  //dmaBytes: BigInt = 8,
+  //size: BigInt = 0x1000,
+  //width: Int = 32
+)
 
 case object BorgKey extends Field[Option[BorgParams]](None)
 
@@ -64,11 +65,11 @@ trait CanHavePeripheryBorg { this: BaseSubsystem =>
   p(BorgKey) match {
     case Some(params) => {
       val borg = {
-        val borg = LazyModule(new BorgTileLink(params, pbus.beatBytes)(p))
+        val borgTileLink = LazyModule(new BorgTileLink(params, pbus.beatBytes)(p))
         //borg.clockNode := pbus.fixedClockNode
-        pbus.coupleTo("borgPort") { borg.registerNode := TLFragmenter(pbus.beatBytes, pbus.blockBytes) := _ }
-        pbus.coupleFrom("borgPortDma") { _ := borg.clientNode }
-        borg
+        pbus.coupleTo("borgPort") { borgTileLink.registerNode := TLFragmenter(pbus.beatBytes, pbus.blockBytes) := _ }
+        //pbus.coupleFrom("borgPortDma") { _ := borg.clientNode }
+        borgTileLink
       }
     }
     case None => None
