@@ -59,22 +59,33 @@ class BorgDataLoader(val w: Int) extends Module {
   io.done := state === s_idle
 }
 
-trait CanHavePeripheryBorg { this: BaseSubsystem =>
-  private val pbus = locateTLBusWrapper(PBUS)
+//trait CanHavePeripheryBorg { this: BaseSubsystem =>
+//  private val pbus = locateTLBusWrapper(PBUS)
+//
+//  p(BorgKey) match {
+//    case Some(params) => {
+//      val borg = {
+//        val borgTileLink = LazyModule(new BorgTileLink(params, pbus.beatBytes)(p))
+//        //borg.clockNode := pbus.fixedClockNode
+//        pbus.coupleTo("borgPort") { borgTileLink.registerNode := TLFragmenter(pbus.beatBytes, pbus.blockBytes) := _ }
+//        //pbus.coupleFrom("borgPortDma") { _ := borg.clientNode }
+//        borgTileLink
+//      }
+//    }
+//    case None => None
+//  }
+//}
 
-  p(BorgKey) match {
-    case Some(params) => {
-      val borg = {
-        val borgTileLink = LazyModule(new BorgTileLink(params, pbus.beatBytes)(p))
-        //borg.clockNode := pbus.fixedClockNode
-        pbus.coupleTo("borgPort") { borgTileLink.registerNode := TLFragmenter(pbus.beatBytes, pbus.blockBytes) := _ }
-        //pbus.coupleFrom("borgPortDma") { _ := borg.clientNode }
-        borgTileLink
-      }
-    }
-    case None => None
+trait CanHavePeripheryBorg { this: BaseSubsystem =>
+  implicit val p: Parameters
+
+  p(BorgKey) .map { k =>
+    val fbus = locateTLBusWrapper(FBUS)
+    val borgTileLink= fbus { LazyModule(new BorgTileLink()(p)) }
+    fbus.coupleTo("borgPort") { borgTileLink.registerNode := TLFragmenter(fbus.beatBytes, fbus.blockBytes) := _ }
   }
 }
+
 
 class WithBorg() extends Config((site, here, up) => {
   case BorgKey => {

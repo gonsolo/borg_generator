@@ -22,16 +22,17 @@ trait HasBorgTopIO {
   def io: BorgTopIO
 }
 
-class BorgTileLink(params: BorgParams, beatBytes: Int)(implicit p: Parameters)
-  extends LazyModule {
-  //extends ClockSinkDomain(ClockSinkParameters())(p) {
+//class BorgTileLink(params: BorgParams, beatBytes: Int)(implicit p: Parameters)
+class BorgTileLink(implicit p: Parameters) extends LazyModule {
+
+  val config = p(BorgKey).get
 
   val device = new SimpleDevice("borg-device", Seq("borg,borg-1"))
   val registerNode = TLRegisterNode(
-    Seq(AddressSet(params.regAddress, 4096-1)),
+    Seq(AddressSet(config.regAddress, 4096-1)),
     device,
     "reg/control",
-    beatBytes=beatBytes)
+    )
   //val clientNode = TLClientNode(Seq(TLMasterPortParameters.v1(Seq(TLMasterParameters.v1(
   //  name = "dma-test",
   //  sourceId = IdRange(0, 1))))))
