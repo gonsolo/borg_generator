@@ -1,3 +1,6 @@
+// Copyright Andreas Wendleder 2025
+// GPL-3.0-only
+
 //package borg
 //
 //import chisel3._
