@@ -16,13 +16,13 @@ case class BorgConfig()
 
 case object BorgKey extends Field[Option[BorgConfig]](None)
 
-class Borg(implicit p: Parameters) extends LazyModule {
+class Borg(beatBytes: Int)(implicit p: Parameters) extends LazyModule {
 
   val regAddress: BigInt = 0x4000
   val regSize: BigInt = 0x0FFF
 
   val device = new SimpleDevice("borg-device", Seq("borg,borg-1"))
-  val node = TLRegisterNode(Seq(AddressSet(regAddress, regSize)), device, "reg/control")
+  val node = TLRegisterNode(Seq(AddressSet(regAddress, regSize)), device, "reg/control", beatBytes=beatBytes)
 
   lazy val module = new BorgModuleImp(this)
 }
@@ -42,7 +42,7 @@ trait CanHavePeripheryBorg { this: BaseSubsystem =>
 
   p(BorgKey) .map { k =>
     val pbus = locateTLBusWrapper(PBUS)
-    val borg = pbus { LazyModule(new Borg()(p)) }
+    val borg = pbus { LazyModule(new Borg(pbus.beatBytes)(p)) }
     pbus.coupleTo("borg-borg") { borg.node := TLFragmenter(pbus.beatBytes, pbus.blockBytes) := _ }
   }
 }
