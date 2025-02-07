@@ -54,7 +54,8 @@ class BorgModuleImp(outer: Borg) extends LazyModuleImp(outer) {
 
   val test1 = RegInit(666.U(32.W))
 
-  val loader = new BorgLoader()
+  val loader = Module(new BorgLoader())
+  loader.io.start := 0.U
 
   outer.node.regmap(
     0x00 -> Seq(RegField.r(32, test1)),
