@@ -28,25 +28,38 @@ class Borg(beatBytes: Int)(implicit p: Parameters) extends LazyModule {
   lazy val module = new BorgModuleImp(this)
 }
 
+class BorgLoaderIO extends Bundle {
+  val start = Input(UInt(32.W))
+  val counter = Output(UInt(32.W))
+}
+
+class BorgLoader extends Module {
+  val io = IO(new BorgLoaderIO())
+
+  val start = RegInit(0.U(32.W))
+  start := io.start
+  when (start === 1.U) {
+    start := 0.U
+  }
+  val counter = RegInit(0.U(32.W))
+  io.counter := counter
+  when (start === 1.U) {
+    counter := counter + 1.U
+  }
+}
+
 class BorgModuleImp(outer: Borg) extends LazyModuleImp(outer) {
 
   val config = p(BorgKey).get
 
   val test1 = RegInit(666.U(32.W))
 
-  val start = RegInit(0.U(32.W))
-  when (start === 1.U) {
-    start := 0.U
-  }
-  val counter = RegInit(0.U(32.W))
-  when (start === 1.U) {
-    counter := counter + 1.U
-  }
+  val loader = new BorgLoader()
 
   outer.node.regmap(
     0x00 -> Seq(RegField.r(32, test1)),
-    0x20 -> Seq(RegField.w(32, start)),
-    0x40 -> Seq(RegField.r(32, counter)),
+    0x20 -> Seq(RegField.w(32, loader.io.start)),
+    0x40 -> Seq(RegField.r(32, loader.io.counter)),
   )
 }
 
