@@ -4,6 +4,7 @@
 package borg
 
 import chisel3._
+import chisel3.util.Enum
 import freechips.rocketchip.diplomacy.{AddressSet}
 import freechips.rocketchip.subsystem.{BaseSubsystem, PBUS}
 import freechips.rocketchip.regmapper.{RegField}
@@ -32,8 +33,20 @@ class BorgModuleImp(outer: Borg) extends LazyModuleImp(outer) {
   val config = p(BorgKey).get
 
   val test1 = RegInit(666.U(32.W))
+
+  val start = RegInit(0.U(32.W))
+  when (start === 1.U) {
+    start := 0.U
+  }
+  val counter = RegInit(0.U(32.W))
+  when (start === 1.U) {
+    counter := counter + 1.U
+  }
+
   outer.node.regmap(
     0x00 -> Seq(RegField.r(32, test1)),
+    0x20 -> Seq(RegField.w(32, start)),
+    0x40 -> Seq(RegField.r(32, counter)),
   )
 }
 
