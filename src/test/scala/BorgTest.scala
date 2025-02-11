@@ -4,36 +4,19 @@ import chisel3.simulator.EphemeralSimulator._
 import org.scalatest.flatspec.AnyFlatSpec
 import org.chipsalliance.cde.config.Parameters
 
-class ResetTest extends AnyFlatSpec {
+class SeenTest extends AnyFlatSpec {
   behavior of "BorgLoader"
-  it should "count correctly" in {
+  it should "see kick" in {
     simulate(new BorgLoader()) { loader =>
-      println("Reset ok.")
-        loader.clock.step()
-        loader.io.counter.expect(0.U)
 
-        println("Poke 1")
-        loader.io.start_in.poke(1.U)
-        loader.clock.step()
-        println("Step")
-        loader.io.counter.expect(0.U)
-        println("counter: " + loader.io.counter.peek().litValue)
-        println("start: " + loader.io.start_out.peek().litValue)
+        println("Reset ok.")
 
         loader.clock.step()
-        println("Step")
-        println("counter: " + loader.io.counter.peek().litValue)
-        println("start: " + loader.io.start_out.peek().litValue)
+        loader.io.seen.expect(0.U)
 
+        loader.io.kick.poke(1.U)
         loader.clock.step()
-        println("Step")
-        println("counter: " + loader.io.counter.peek().litValue)
-        println("start: " + loader.io.start_out.peek().litValue)
-
-        loader.clock.step()
-        println("Step")
-        println("counter: " + loader.io.counter.peek().litValue)
-        println("start: " + loader.io.start_out.peek().litValue)
+        loader.io.seen.expect(1.U)
     }
   }
 }
