@@ -7,7 +7,14 @@ import org.chipsalliance.cde.config.Parameters
 class SeenTest extends AnyFlatSpec {
   behavior of "BorgLoader"
   it should "see kick" in {
-    simulate(new BorgLoader()) { loader =>
+    val params = new WithBorg()
+    //val conf = new BorgCoreParams
+    //simulate(new BorgCore()(params, conf)) {
+
+    val config = new BorgConfig()
+    //val parameters = Parameters(config)
+    val borg = new Borg(8)(params)
+    simulate(new BorgLoader(borg, 8)) { loader =>
 
         println("Reset ok.")
 
