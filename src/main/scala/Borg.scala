@@ -62,25 +62,12 @@ class BorgModuleImp(outer: Borg) extends LazyModuleImp(outer) {
   //val loader = Module(new BorgLoader())
   //loader.io.start_ := 0.U
 
-   val counter = RegInit(0.U(32.W))
-
-   def readCounter(ready: Bool): (Bool, UInt) = {
-     when (ready) { counter := counter - 1.U }
-     // (ready, bits)
-     (true.B, counter)
-   }
-
-   def writeCounter(valid: Bool, bits: UInt): Bool = {
-     when (valid) { counter := counter + 1.U }
-     // Ignore bits
-     // Return ready
-     true.B
-   }
+  val x = RegInit(0.U(32.W))
 
   outer.node.regmap(
     0x00 -> Seq(RegField.r(32, test1)),
-    0x20 -> Seq(RegField.r(32, readCounter(_))),
-    0x40 -> Seq(RegField.w(32, writeCounter(_, _))),
+    0x20 -> Seq(RegField.r(32, x)),
+    0x40 -> Seq(RegField.w(32, x)),
   )
 }
 
