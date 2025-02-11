@@ -29,18 +29,23 @@ class Borg(beatBytes: Int)(implicit p: Parameters) extends LazyModule {
 }
 
 class BorgLoaderIO extends Bundle {
-  val start = Input(UInt(32.W))
+  val start_in = Input(UInt(32.W))
   val counter = Output(UInt(32.W))
+  val start_out = Output(UInt(32.W))
 }
 
 class BorgLoader extends Module {
   val io = IO(new BorgLoaderIO())
 
   val start = RegInit(0.U(32.W))
-  start := io.start
+  when (start === 0.U && io.start_in === 1.U) {
+    start := 1.U
+  }
   when (start === 1.U) {
     start := 0.U
   }
+  io.start_out := start
+
   val counter = RegInit(0.U(32.W))
   io.counter := counter
   when (start === 1.U) {
@@ -54,13 +59,28 @@ class BorgModuleImp(outer: Borg) extends LazyModuleImp(outer) {
 
   val test1 = RegInit(666.U(32.W))
 
-  val loader = Module(new BorgLoader())
-  loader.io.start := 0.U
+  //val loader = Module(new BorgLoader())
+  //loader.io.start_ := 0.U
+
+   val counter = RegInit(0.U(32.W))
+
+   def readCounter(ready: Bool): (Bool, UInt) = {
+     when (ready) { counter := counter - 1.U }
+     // (ready, bits)
+     (true.B, counter)
+   }
+
+   def writeCounter(valid: Bool, bits: UInt): Bool = {
+     when (valid) { counter := counter + 1.U }
+     // Ignore bits
+     // Return ready
+     true.B
+   }
 
   outer.node.regmap(
     0x00 -> Seq(RegField.r(32, test1)),
-    0x20 -> Seq(RegField.w(32, loader.io.start)),
-    0x40 -> Seq(RegField.r(32, loader.io.counter)),
+    0x20 -> Seq(RegField.r(32, readCounter(_))),
+    0x40 -> Seq(RegField.w(32, writeCounter(_, _))),
   )
 }
 
