@@ -62,7 +62,7 @@ class BorgModuleImp(outer: Borg) extends LazyModuleImp(outer) {
   // Writing for now, reading later
   val (mem, edge) = outer.dmaNode.out(0)
   val addressBits = edge.bundle.addressBits
-  val dmaBase =  0x5000
+  val dmaBase = 0x88000000L
   val dmaSize = 0x100L
   require(dmaSize % blockBytes == 0)
 
@@ -79,7 +79,7 @@ class BorgModuleImp(outer: Borg) extends LazyModuleImp(outer) {
     data = 999.U)._2
   mem.d.ready := state === s_resp
 
-  when (state === s_init && kick.asBool) {
+  when (state === s_init && kick === 1.U) {
     address := dmaBase.U
     bytesLeft := dmaSize.U
     state := s_write
