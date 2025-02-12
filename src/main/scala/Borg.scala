@@ -6,7 +6,7 @@ package borg
 import chisel3._
 import chisel3.util.{Enum, log2Ceil}
 import freechips.rocketchip.diplomacy.{AddressSet, IdRange}
-import freechips.rocketchip.subsystem.{BaseSubsystem, CacheBlockBytes, PBUS}
+import freechips.rocketchip.subsystem.{BaseSubsystem, CacheBlockBytes, FBUS, PBUS}
 import freechips.rocketchip.regmapper.{RegField}
 import freechips.rocketchip.resources.{SimpleDevice}
 import freechips.rocketchip.tilelink.{TLClientNode, TLFragmenter, TLMasterParameters, TLMasterPortParameters, TLRegisterNode}
@@ -47,6 +47,7 @@ class BorgLoader(outer: Borg, blockBytes: Int) extends Module {
 class BorgModuleImp(outer: Borg) extends LazyModuleImp(outer) {
 
   val blockBytes = p(CacheBlockBytes)
+  require(blockBytes == 64)
 
   val test1 = RegInit(666.U(32.W))
 
@@ -63,13 +64,15 @@ class BorgModuleImp(outer: Borg) extends LazyModuleImp(outer) {
   val (mem, edge) = outer.dmaNode.out(0)
   val addressBits = edge.bundle.addressBits
   val dmaBase = 0x88000000L
-  val dmaSize = 0x100L
+  val dmaSize = 0x80L
   require(dmaSize % blockBytes == 0)
 
   val s_init :: s_write:: s_resp :: s_done :: Nil = Enum(4)
   val state = RegInit(s_init)
   val address = Reg(UInt(addressBits.W))
   val bytesLeft = Reg(UInt(log2Ceil(dmaSize+1).W))
+
+  val data = 9999999.U(512.W)
 
   mem.a.valid := state === s_write
   mem.a.bits := edge.Put(
@@ -80,21 +83,28 @@ class BorgModuleImp(outer: Borg) extends LazyModuleImp(outer) {
   mem.d.ready := state === s_resp
 
   when (state === s_init && kick === 1.U) {
+  //when (state === s_init) {
     address := dmaBase.U
     bytesLeft := dmaSize.U
     state := s_write
+    printf(cf"Borg s_init and kick: state: $state, kick: $kick, address: $address, bytesLeft: $bytesLeft!\n")
+  } . otherwise {
+    printf(cf"Borg state: $state, kick: $kick, address: $address, bytesLeft: $bytesLeft!\n")
   }
   when (edge.done(mem.a)) {
+    printf("Borg edge done!\n")
     address := address + blockBytes.U
     bytesLeft := bytesLeft - blockBytes.U
     state := s_resp
   }
   when (mem.d.fire) {
+    printf("Borg d fire!\n")
     state := Mux(bytesLeft === 0.U, s_done, s_write)
   }
 
   val done = RegInit(0.U(32.W))
   when (state === s_done) {
+    printf("Borg done!\n")
     done := 1.U
   }
 
@@ -114,7 +124,8 @@ trait CanHavePeripheryBorg { this: BaseSubsystem =>
     val pbus = locateTLBusWrapper(PBUS)
     val borg = pbus { LazyModule(new Borg(pbus.beatBytes)(p)) }
     pbus.coupleTo("borg-borg") { borg.registerNode := TLFragmenter(pbus.beatBytes, pbus.blockBytes) := _ }
-    pbus.coupleFrom("borg-dma") { _ := borg.dmaNode }
+    val fbus = locateTLBusWrapper(FBUS)
+    fbus.coupleFrom("borg-dma") { _ := borg.dmaNode }
   }
 }
 
