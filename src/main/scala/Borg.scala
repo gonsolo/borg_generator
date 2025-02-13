@@ -67,7 +67,7 @@ class BorgModuleImp(outer: Borg) extends LazyModuleImp(outer) {
   val dmaSize = 0x80L
   require(dmaSize % blockBytes == 0)
 
-  val s_init :: s_write:: s_resp :: s_done :: Nil = Enum(4)
+  val s_init :: s_read :: s_resp :: s_done :: Nil = Enum(4)
   val state = RegInit(s_init)
   val address = Reg(UInt(addressBits.W))
   val bytesLeft = Reg(UInt(log2Ceil(dmaSize+1).W))
@@ -78,27 +78,28 @@ class BorgModuleImp(outer: Borg) extends LazyModuleImp(outer) {
   val s_a :: s_b :: Nil = Enum(2)
   val data_state = RegInit(s_a)
   val data = RegInit(data1)
-  when (data_state === s_a) {
-    data := data1
-    data_state := s_b
-  } . otherwise {
-    data := data2
-    data_state := s_a
-  }
+  //when (data_state === s_a) {
+  //  data := data1
+  //  data_state := s_b
+  //} . otherwise {
+  //  data := data2
+  //  data_state := s_a
+  //}
 
-  mem.a.valid := state === s_write
-  mem.a.bits := edge.Put(
+  mem.a.valid := state === s_read
+  mem.a.bits := edge.Get(
     fromSource = 0.U,
     toAddress = address,
-    lgSize = log2Ceil(blockBytes).U,
-    data = data)._2
+    lgSize = log2Ceil(blockBytes).U
+    //lgSize = log2Ceil(blockBytes).U,
+    //data = data)._2
+    )._2
   mem.d.ready := state === s_resp
 
   when (state === s_init && kick === 1.U) {
-  //when (state === s_init) {
     address := dmaBase.U
     bytesLeft := dmaSize.U
-    state := s_write
+    state := s_read
     printf(cf"Borg s_init and kick: state: $state, kick: $kick, address: $address, bytesLeft: $bytesLeft!\n")
   } . otherwise {
     printf(cf"Borg state: $state, kick: $kick, address: $address, bytesLeft: $bytesLeft!\n")
@@ -110,8 +111,9 @@ class BorgModuleImp(outer: Borg) extends LazyModuleImp(outer) {
     state := s_resp
   }
   when (mem.d.fire) {
-    printf("Borg d fire!\n")
-    state := Mux(bytesLeft === 0.U, s_done, s_write)
+    data := mem.d.bits.data
+    printf(cf"Borg d fire, data: 0x$data%x!\n")
+    state := Mux(bytesLeft === 0.U, s_done, s_read)
   }
 
   val done = RegInit(0.U(32.W))
