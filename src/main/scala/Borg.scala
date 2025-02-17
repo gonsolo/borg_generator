@@ -29,21 +29,6 @@ class Borg(beatBytes: Int)(implicit p: Parameters) extends LazyModule {
   lazy val module = new BorgModuleImp(this)
 }
 
-class BorgLoaderIO extends Bundle {
-  val kick = Input(UInt(32.W))
-  val seen = Output(UInt(32.W))
-}
-
-class BorgLoader(outer: Borg, blockBytes: Int) extends Module {
-  val io = IO(new BorgLoaderIO())
-
-  val seen = RegInit(0.U(32.W))
-  when (io.kick === 1.U) {
-    seen := 1.U
-  }
-  io.seen := seen
-}
-
 class BorgModuleImp(outer: Borg) extends LazyModuleImp(outer) {
 
   val blockBytes = p(CacheBlockBytes)
@@ -55,9 +40,6 @@ class BorgModuleImp(outer: Borg) extends LazyModuleImp(outer) {
   when (kick === 1.U) {
     kick := 0.U
   }
-
-  val loader = Module(new BorgLoader(outer, blockBytes))
-  loader.io.kick := kick
 
   // When kick equals 1 start DMA download
   // Writing for now, reading later
@@ -71,63 +53,50 @@ class BorgModuleImp(outer: Borg) extends LazyModuleImp(outer) {
   val state = RegInit(s_init)
   val address = Reg(UInt(addressBits.W))
   val bytesLeft = Reg(UInt(log2Ceil(dmaSize+1).W))
-
-  val data1 = "h_FFFF_1111_2222_3333".U(64.W)
-  val data2 = "h_EEEE_2222_4444_6666".U(64.W)
-
-  val s_a :: s_b :: Nil = Enum(2)
-  val data_state = RegInit(s_a)
-  val data = RegInit(data1)
-  //when (data_state === s_a) {
-  //  data := data1
-  //  data_state := s_b
-  //} . otherwise {
-  //  data := data2
-  //  data_state := s_a
-  //}
+  val data = Reg(UInt(64.W))
 
   mem.a.valid := state === s_read
   mem.a.bits := edge.Get(
     fromSource = 0.U,
     toAddress = address,
-    lgSize = log2Ceil(blockBytes).U
-    //lgSize = log2Ceil(blockBytes).U,
-    //data = data)._2
-    )._2
+    lgSize = log2Ceil(blockBytes).U)._2
   mem.d.ready := state === s_resp
 
   when (state === s_init && kick === 1.U) {
-    address := dmaBase.U
-    bytesLeft := dmaSize.U
-    state := s_read
-    printf(cf"Borg s_init and kick: state: $state, kick: $kick, address: $address, bytesLeft: $bytesLeft!\n")
+    //address := dmaBase.U
+    //bytesLeft := dmaSize.U
+    //state := s_read
+    state := s_done
+    printf(cf"Borg s_init and kick: state: $state, kick: $kick, address: 0x$address%x, bytesLeft: $bytesLeft!\n")
   } . otherwise {
-    printf(cf"Borg state: $state, kick: $kick, address: $address, bytesLeft: $bytesLeft!\n")
+    printf(cf"Borg state: $state, kick: $kick, address: 0x$address%x, bytesLeft: $bytesLeft!\n")
   }
-  when (edge.done(mem.a)) {
-    printf("Borg edge done!\n")
-    address := address + blockBytes.U
-    bytesLeft := bytesLeft - blockBytes.U
-    state := s_resp
-  }
-  when (mem.d.fire) {
-    data := mem.d.bits.data
-    printf(cf"Borg d fire, data: 0x$data%x!\n")
-    state := Mux(bytesLeft === 0.U, s_done, s_read)
-  }
+  //when (edge.done(mem.a)) {
+  //  printf(cf"Borg edge done: state: $state, kick: $kick, address: 0x$address%x, bytesLeft: $bytesLeft!\n")
+  //  state := s_resp
+  //  //address := address + blockBytes.U
+  //  //bytesLeft := bytesLeft - blockBytes.U
+  //}
 
-  val done = RegInit(0.U(32.W))
-  when (state === s_done) {
-    printf("Borg done!\n")
-    done := 1.U
-  }
+  //when (mem.d.fire) {
+  //  printf(cf"Borg mem.d.fire: data: 0x$data%x, mem.d.bits.data: 0x${mem.d.bits.data}%x.\n")
+  //  data := mem.d.bits.data
+  //  address := address + blockBytes.U
+  //  bytesLeft := bytesLeft - blockBytes.U
+  //  state := Mux(bytesLeft === 0.U, s_done, s_read)
+  //}
+  //val done = RegInit(0.U(32.W))
+  //when (state === s_done) {
+  //  printf("Borg s_done!\n")
+  //  done := 1.U
+  //}
 
   outer.registerNode.regmap(
     0x00 -> Seq(RegField.r(32, test1)),
     0x20 -> Seq(RegField.r(32, kick)),
     0x40 -> Seq(RegField.w(32, kick)),
-    0x60 -> Seq(RegField.r(32, loader.io.seen)),
-    0x80 -> Seq(RegField.r(32, done)),
+    //0x60 -> Seq(RegField.r(32, loader.io.seen)),
+    //0x80 -> Seq(RegField.r(32, done)),
   )
 }
 
