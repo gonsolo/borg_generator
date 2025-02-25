@@ -41,9 +41,6 @@ class BorgModuleImp(outer: Borg) extends LazyModuleImp(outer) {
     kick := 0.U
   }
 
-  // When kick equals 1 start DMA download
-  // Writing for now, reading later
-  //val (mem, edge) = outer.dmaNode.out(0)
   val (mem, edge) = outer.dmaNode.out(0)
   val addressBits = edge.bundle.addressBits
   val dmaBase = 0x88000000L
@@ -51,8 +48,7 @@ class BorgModuleImp(outer: Borg) extends LazyModuleImp(outer) {
   val dmaSize = 0x40L
   require(dmaSize % blockBytes == 0)
 
-  val s_init :: s_read_write :: s_resp :: s_done :: Nil = Enum(4)
-  //val s_init :: s_write :: s_resp :: s_done :: Nil = Enum(4)
+  val s_init :: s_read :: s_resp :: s_done :: Nil = Enum(4)
   val state = RegInit(s_init)
   val bytesLeft = Reg(UInt(log2Ceil(dmaSize+1).W))
   val data = Reg(UInt(64.W))
@@ -63,34 +59,38 @@ class BorgModuleImp(outer: Borg) extends LazyModuleImp(outer) {
 
   val (isLegal, getPutBits) = edge.Get(src, address, size)
   //val (isLegal, getPutBits) = edge.Put(src, address, size, 0.U)
-  printf(cf"Borg state: $state, isLegal: $isLegal, address: $address, size: $size\n")
+  printf(cf"Borg state: $state, data: 0x$data%x, isLegal: $isLegal, address: 0x$address%x, size: $size\n")
   printf(cf"Borg mem.a.ready: ${mem.a.ready}, mem.a.valid: ${mem.a.valid}, mem.d.ready: ${mem.d.ready}, mem.d.valid: ${mem.d.valid}\n")
 
-  mem.a.valid := state === s_read_write
+  mem.a.valid := state === s_read
   mem.a.bits := getPutBits
   //mem.d.ready := state === s_resp
 
   when (state === s_init && kick === 1.U) {
     address := dmaBase.U
     bytesLeft := dmaSize.U
-    state := s_read_write
-    printf(cf"Borg s_init and kick, address: $address, bytesLeft: $bytesLeft, state: $state!\n")
+    state := s_read
+    printf(cf"Borg s_init and kick, address: 0x$address%x, bytesLeft: $bytesLeft, state: $state!\n")
   }
-  when (state === s_read_write && edge.done(mem.a)) {
-    printf(cf"Borg edge done, address $address, bytesLeft: $bytesLeft, state: $state!\n")
+  when (edge.done(mem.a)) {
+    printf(cf"Borg edge done, address 0x$address%x, bytesLeft: $bytesLeft, state: $state!\n")
     address := address + blockBytes.U
     bytesLeft := bytesLeft - blockBytes.U
     state := s_resp
   }
-  when (state === s_resp && mem.d.fire) {
+  data := mem.d.bits.data
+  //when (mem.d.fire) {
+  //  val hasData = edge.hasData(mem.d.bits)
+  //  printf(cf"Borg mem.d.fire: data: 0x$data%x, mem.d.bits.data: 0x${mem.d.bits.data}%x, address: 0x$address%x, bytesLeft: $bytesLeft, state: $state, hasData: $hasData.\n")
+  //  state := Mux(bytesLeft === 0.U, s_done, s_read)
+  //}
+  when (mem.d.valid === true.B) {
+    mem.d.ready := true.B
     val hasData = edge.hasData(mem.d.bits)
-    printf(cf"Borg mem.d.fire: data: 0x$data%x, mem.d.bits.data: 0x${mem.d.bits.data}%x, bytesLeft: $bytesLeft, state: $state, hasData: $hasData.\n")
-    val bla = mem.d.deq()
-    //mem.d.ready := false.B
-    // Do something with valid
-    // Do somthing with bits
-    //data := mem.d.bits.data
-    state := Mux(bytesLeft === 0.U, s_done, s_read_write)
+    printf(cf"Borg mem.d.valid: data: 0x$data%x, mem.d.bits.data: 0x${mem.d.bits.data}%x, address: 0x$address%x, bytesLeft: $bytesLeft, state: $state, hasData: $hasData.\n")
+    state := Mux(bytesLeft === 0.U, s_done, s_read)
+  } .otherwise {
+    mem.d.ready := false.B
   }
 
   outer.registerNode.regmap(
