@@ -44,7 +44,7 @@ class BorgModuleImp(outer: Borg) extends LazyModuleImp(outer) {
   val (mem, edge) = outer.dmaNode.out(0)
   val addressBits = edge.bundle.addressBits
   val dmaBase = 0x88000000L
-  val dmaSize = 4 * 0x40L // Write 4 * 64 = 256 bytes
+  val dmaSize = 2 * 64 // 128 bytes
   require(dmaSize % blockBytes == 0)
 
   val s_init :: s_read :: s_resp :: s_done :: Nil = Enum(4)
@@ -94,9 +94,8 @@ class BorgModuleImp(outer: Borg) extends LazyModuleImp(outer) {
         //val hasData = edge.hasData(mem.d.bits)
         //printf(cf"Borg mem.d.valid: data: 0x$data%x, mem.d.bits.data: 0x${mem.d.bits.data}%x, address: 0x$address%x, bytesLeft: $bytesLeft, state: $state, hasData: $hasData.\n")
       }
-      when (mem.d.valid === true.B && dValidSeen === false.B) {
-        printf(cf"Borg setting data: 0x${mem.d.bits.data}%x.\n")
-
+      when (mem.d.valid === true.B) {
+        printf(cf"Borg setting data: 0x${mem.d.bits.data}%x, data is ${mem.d.bits.data.getWidth} bits wide.\n")
       }
       when (dValidSeen === true.B && mem.d.valid === false.B) {
         dValidSeen := false.B
