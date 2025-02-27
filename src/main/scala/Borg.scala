@@ -44,8 +44,7 @@ class BorgModuleImp(outer: Borg) extends LazyModuleImp(outer) {
   val (mem, edge) = outer.dmaNode.out(0)
   val addressBits = edge.bundle.addressBits
   val dmaBase = 0x88000000L
-  val dmaSize = 0x80L
-  //val dmaSize = 0x40L
+  val dmaSize = 4 * 0x40L // Write 4 * 64 = 256 bytes
   require(dmaSize % blockBytes == 0)
 
   val s_init :: s_read :: s_resp :: s_done :: Nil = Enum(4)
