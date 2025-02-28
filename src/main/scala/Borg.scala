@@ -49,17 +49,17 @@ class BorgModuleImp(outer: Borg) extends LazyModuleImp(outer) {
 
   val s_init :: s_read :: s_resp :: s_done :: Nil = Enum(4)
   val state = RegInit(s_init)
-  val bytesLeft = Reg(UInt(log2Ceil(dmaSize+1).W))
+  val dmaSizeWidth = log2Ceil(dmaSize+1).W
+  val bytesLeft = Reg(UInt(dmaSizeWidth))
   val data = Reg(UInt(64.W))
+  val memory = Mem(dmaSize, UInt(64.W))
+  val memoryIndex = RegInit(0.U(dmaSizeWidth))
 
   val src = WireInit(0.U)
   val address = Reg(UInt(addressBits.W))
   val size = log2Ceil(blockBytes).U
 
-  val (isLegal, getPutBits) = edge.Get(src, address, size)
-  //val (isLegal, getPutBits) = edge.Put(src, address, size, 0.U)
-  //printf(cf"Borg state: $state, data: 0x$data%x, isLegal: $isLegal, address: 0x$address%x, size: $size\n")
-  //printf(cf"Borg mem.a.ready: ${mem.a.ready}, mem.a.valid: ${mem.a.valid}, mem.d.ready: ${mem.d.ready}, mem.d.valid: ${mem.d.valid}\n")
+  val getPutBits = edge.Get(src, address, size)._2
 
   mem.a.bits := getPutBits
   data := mem.d.bits.data
@@ -70,7 +70,6 @@ class BorgModuleImp(outer: Borg) extends LazyModuleImp(outer) {
       mem.a.valid := false.B
       mem.d.ready := false.B
       when (kick === 1.U) {
-        //printf(cf"Borg s_init and kick, address: 0x$address%x, bytesLeft: $bytesLeft, state: $state!\n")
         address := dmaBase.U
         bytesLeft := dmaSize.U
         state := s_read
@@ -80,7 +79,6 @@ class BorgModuleImp(outer: Borg) extends LazyModuleImp(outer) {
       mem.a.valid := true.B
       mem.d.ready := false.B
       when (edge.done(mem.a)) {
-        //printf(cf"Borg edge done, address 0x$address%x, bytesLeft: $bytesLeft, state: $state!\n")
         address := address + blockBytes.U
         bytesLeft := bytesLeft - blockBytes.U
         state := s_resp
@@ -91,21 +89,22 @@ class BorgModuleImp(outer: Borg) extends LazyModuleImp(outer) {
       mem.d.ready := true.B
       when (mem.d.valid === true.B) {
         dValidSeen := true.B
-        //val hasData = edge.hasData(mem.d.bits)
-        //printf(cf"Borg mem.d.valid: data: 0x$data%x, mem.d.bits.data: 0x${mem.d.bits.data}%x, address: 0x$address%x, bytesLeft: $bytesLeft, state: $state, hasData: $hasData.\n")
+        memory(memoryIndex) := mem.d.bits.data
+        memoryIndex := memoryIndex + 1.U
+        //printf(cf"Borg setting memory at $memoryIndex to: 0x${mem.d.bits.data}%x.\n")
       }
-      when (mem.d.valid === true.B) {
-        printf(cf"Borg setting data: 0x${mem.d.bits.data}%x, data is ${mem.d.bits.data.getWidth} bits wide.\n")
-      }
+      //printf(cf"Borg memory at last index: 0x${memory(memoryIndex - 1.U)}%x.\n")
       when (dValidSeen === true.B && mem.d.valid === false.B) {
         dValidSeen := false.B
         state := Mux(bytesLeft === 0.U, s_done, s_read)
       }
     }
     is (s_done) {
-      //printf(cf"Borg s_done.\n")
       mem.a.valid := false.B
       mem.d.ready := false.B
+      for ( i <- 0 to 15) {
+        printf(cf"Borg memory $i: 0x${memory(i)}%x\n")
+      }
     }
   }
   outer.registerNode.regmap(
