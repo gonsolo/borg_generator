@@ -48,8 +48,8 @@ class BorgModuleImp(outer: Borg) extends LazyModuleImp(outer) {
   val dmaSize = 16 * 64 // 1024 bytes
   require(dmaSize % blockBytes == 0)
 
-  val s_init :: s_read :: s_resp :: Nil = Enum(3)
-  val state = RegInit(s_init)
+  val s_idle :: s_read :: s_response :: Nil = Enum(3)
+  val state = RegInit(s_idle)
   val dmaSizeWidth = log2Ceil(dmaSize+1).W
   val bytesLeft = Reg(UInt(dmaSizeWidth))
   val data = Reg(UInt(64.W))
@@ -67,7 +67,7 @@ class BorgModuleImp(outer: Borg) extends LazyModuleImp(outer) {
   val dValidSeen = RegInit(false.B)
 
   switch (state) {
-    is (s_init) {
+    is (s_idle) {
       mem.a.valid := false.B
       mem.d.ready := false.B
       when (kick === 1.U) {
@@ -85,10 +85,10 @@ class BorgModuleImp(outer: Borg) extends LazyModuleImp(outer) {
       when (edge.done(mem.a)) {
         address := address + blockBytes.U
         bytesLeft := bytesLeft - blockBytes.U
-        state := s_resp
+        state := s_response
       }
     }
-    is (s_resp) {
+    is (s_response) {
       mem.a.valid := false.B
       mem.d.ready := true.B
       when (mem.d.valid === true.B) {
@@ -99,7 +99,7 @@ class BorgModuleImp(outer: Borg) extends LazyModuleImp(outer) {
       when (dValidSeen === true.B && mem.d.valid === false.B) {
         dValidSeen := false.B
         completed := true.B
-        state := Mux(bytesLeft === 0.U, s_init, s_read)
+        state := Mux(bytesLeft === 0.U, s_idle, s_read)
       }
     }
   }
