@@ -45,10 +45,10 @@ class BorgModuleImp(outer: Borg) extends LazyModuleImp(outer) {
   val (mem, edge) = outer.dmaNode.out(0)
   val addressBits = edge.bundle.addressBits
   val dmaBase = 0x88000000L
-  val dmaSize = 2 * 64 // 128 bytes
+  val dmaSize = 16 * 64 // 1024 bytes
   require(dmaSize % blockBytes == 0)
 
-  val s_init :: s_read :: s_resp :: s_done :: Nil = Enum(4)
+  val s_init :: s_read :: s_resp :: Nil = Enum(3)
   val state = RegInit(s_init)
   val dmaSizeWidth = log2Ceil(dmaSize+1).W
   val bytesLeft = Reg(UInt(dmaSizeWidth))
@@ -77,9 +77,7 @@ class BorgModuleImp(outer: Borg) extends LazyModuleImp(outer) {
         completed := false.B
         state := s_read
       }
-      for ( i <- 0 to 15) {
-        printf(cf"Borg memory $i: 0x${memory(i)}%x\n")
-      }
+      //for ( i <- 0 to 15) { printf(cf"Borg memory $i: 0x${memory(i)}%x\n") }
     }
     is (s_read) {
       mem.a.valid := true.B
@@ -97,29 +95,18 @@ class BorgModuleImp(outer: Borg) extends LazyModuleImp(outer) {
         dValidSeen := true.B
         memory(memoryIndex) := mem.d.bits.data
         memoryIndex := memoryIndex + 1.U
-        //printf(cf"Borg setting memory at $memoryIndex to: 0x${mem.d.bits.data}%x.\n")
       }
-      //printf(cf"Borg memory at last index: 0x${memory(memoryIndex - 1.U)}%x.\n")
       when (dValidSeen === true.B && mem.d.valid === false.B) {
         dValidSeen := false.B
-        //state := Mux(bytesLeft === 0.U, s_done, s_read)
         completed := true.B
         state := Mux(bytesLeft === 0.U, s_init, s_read)
       }
     }
-    //is (s_done) {
-    //  mem.a.valid := false.B
-    //  mem.d.ready := false.B
-    //  for ( i <- 0 to 15) {
-    //    printf(cf"Borg memory $i: 0x${memory(i)}%x\n")
-    //  }
-    //}
   }
   outer.registerNode.regmap(
     0x00 -> Seq(RegField.r(32, test1)),
-    0x20 -> Seq(RegField.r(32, kick)),
-    0x40 -> Seq(RegField.w(32, kick)),
-    0x60 -> Seq(RegField.r(32, completed)),
+    0x20 -> Seq(RegField.w(32, kick)),
+    0x40 -> Seq(RegField.r(32, completed)),
   )
 }
 
