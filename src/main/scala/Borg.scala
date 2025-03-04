@@ -37,16 +37,18 @@ class BorgModuleImp(outer: Borg) extends LazyModuleImp(outer) {
   val test1 = RegInit(666.U(32.W))
 
   val kick = RegInit(0.U(32.W))
-  val completed = RegInit(false.B)
   when (kick === 1.U) {
     kick := 0.U
   }
+  val completed = RegInit(false.B)
+  val shaderBase = RegInit(0.U(64.W))
+  val shaderSize = RegInit(0.U(32.W))
 
   val (mem, edge) = outer.dmaNode.out(0)
   val addressBits = edge.bundle.addressBits
-  val dmaBase = 0x88000000L
+  //val dmaBase = 0x88000000L
   val dmaSize = 16 * 64 // 1024 bytes
-  require(dmaSize % blockBytes == 0)
+  //require(shaderSize % blockBytes == 0)
 
   val s_idle :: s_read :: s_response :: Nil = Enum(3)
   val state = RegInit(s_idle)
@@ -71,7 +73,8 @@ class BorgModuleImp(outer: Borg) extends LazyModuleImp(outer) {
       mem.a.valid := false.B
       mem.d.ready := false.B
       when (kick === 1.U) {
-        address := dmaBase.U
+        //address := dmaBase.U
+        address := shaderBase
         bytesLeft := dmaSize.U
         memoryIndex := 0.U
         completed := false.B
@@ -104,9 +107,11 @@ class BorgModuleImp(outer: Borg) extends LazyModuleImp(outer) {
     }
   }
   outer.registerNode.regmap(
-    0x00 -> Seq(RegField.r(32, test1)),
-    0x20 -> Seq(RegField.w(32, kick)),
-    0x40 -> Seq(RegField.r(32, completed)),
+    0x000 -> Seq(RegField.r(32, test1)),
+    0x020 -> Seq(RegField.w(32, kick)),
+    0x040 -> Seq(RegField.r(32, completed)),
+    0x060 -> Seq(RegField.w(64, shaderBase)),
+    0x100 -> Seq(RegField.w(32, shaderSize)),
   )
 }
 
