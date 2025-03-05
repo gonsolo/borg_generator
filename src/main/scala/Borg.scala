@@ -50,7 +50,7 @@ class BorgModuleImp(outer: Borg) extends LazyModuleImp(outer) {
   val dmaSize = 16 * 64 // 1024 bytes
   //require(shaderSize % blockBytes == 0)
 
-  val s_idle :: s_read :: s_response :: Nil = Enum(3)
+  val s_idle :: s_read :: s_response :: s_shader :: Nil = Enum(4)
   val state = RegInit(s_idle)
   val dmaSizeWidth = log2Ceil(dmaSize+1).W
   val bytesLeft = Reg(UInt(dmaSizeWidth))
@@ -101,9 +101,14 @@ class BorgModuleImp(outer: Borg) extends LazyModuleImp(outer) {
       }
       when (dValidSeen === true.B && mem.d.valid === false.B) {
         dValidSeen := false.B
-        completed := true.B
-        state := Mux(bytesLeft === 0.U, s_idle, s_read)
+        state := Mux(bytesLeft === 0.U, s_shader, s_read)
       }
+    }
+    is (s_shader) {
+      mem.a.valid := false.B
+      mem.d.ready := false.B
+      completed := true.B
+      state := s_idle
     }
   }
   outer.registerNode.regmap(
