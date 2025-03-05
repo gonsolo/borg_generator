@@ -48,14 +48,15 @@ class BorgModuleImp(outer: Borg) extends LazyModuleImp(outer) {
   val addressBits = edge.bundle.addressBits
   //val dmaBase = 0x88000000L
   val dmaSize = 16 * 64 // 1024 bytes
-  //require(shaderSize % blockBytes == 0)
+  val instructionSize = dmaSize / 4 // instructions are 32 bit wide
+  val instructionWidth = UInt(32.W)
 
   val s_idle :: s_read :: s_response :: s_shader :: Nil = Enum(4)
   val state = RegInit(s_idle)
   val dmaSizeWidth = log2Ceil(dmaSize+1).W
   val bytesLeft = Reg(UInt(dmaSizeWidth))
   val data = Reg(UInt(64.W))
-  val memory = Mem(dmaSize, UInt(64.W))
+  val memory = Mem(instructionSize, instructionWidth)
   val memoryIndex = RegInit(0.U(dmaSizeWidth))
 
   val src = WireInit(0.U)
@@ -97,7 +98,8 @@ class BorgModuleImp(outer: Borg) extends LazyModuleImp(outer) {
       when (mem.d.valid === true.B) {
         dValidSeen := true.B
         memory(memoryIndex) := mem.d.bits.data
-        memoryIndex := memoryIndex + 1.U
+        memory(memoryIndex+1.U) := mem.d.bits.data >> 32
+        memoryIndex := memoryIndex + 2.U
       }
       when (dValidSeen === true.B && mem.d.valid === false.B) {
         dValidSeen := false.B
@@ -109,6 +111,8 @@ class BorgModuleImp(outer: Borg) extends LazyModuleImp(outer) {
       mem.d.ready := false.B
       completed := true.B
       state := s_idle
+
+      for ( i <- 0 to 1) { printf(cf"Borg memory $i: 0b${memory(i)}%b\n") }
     }
   }
   outer.registerNode.regmap(
