@@ -14,6 +14,7 @@ lazy val root = (project in file("."))
     ),
     scalacOptions ++= Seq(
       "-deprecation",
+      "-feature",
     ),
     addCompilerPlugin("org.chipsalliance" % "chisel-plugin" % chisel6Version cross CrossVersion.full),
     resolvers ++= Resolver.sonatypeOssRepos("snapshots"),

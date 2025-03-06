@@ -1,24 +1,53 @@
 // Copyright Andreas Wendleder 2025
 // GPL-3.0-only
 
-//package borg
-//
-//import chisel3._
-//import chisel3.util._
-//
+package borg
+
+import chisel3._
+import chisel3.util._
+import org.chipsalliance.cde.config.{Parameters}
+import scala.language.reflectiveCalls
+
 //import org.chipsalliance.cde.config.Parameters
 //
 //import scala.collection.immutable.ArraySeq.unsafeWrapArray
-//
-//// --------------------- Experimental Processor -------------------------------------------------//
-//
-//class BorgCoreIo(implicit val p: Parameters, val conf: BorgCoreParams) extends Bundle
-//{
-//  val imem = new MemPortIo(32)
+
+class AsyncScratchPadMemory(num_core_ports: Int) extends Module
+{
+  val io = IO(new Bundle
+    {
+      val core_ports = Vec(num_core_ports, Flipped(new MemPortIo()))
+    })
+
+  // TODO
+  io.core_ports(0).req.ready := DontCare
+  io.core_ports(0).req.valid := DontCare
+  io.core_ports(0).req.bits := DontCare
+  io.core_ports(1).req.ready := DontCare
+  io.core_ports(1).req.valid := DontCare
+  io.core_ports(1).req.bits := DontCare
+}
+
+class MemReq() extends Bundle {
+  val addr = Output(UInt(32.W))
+}
+
+class MemResp() extends Bundle {
+  val data = Output(UInt(32.W))
+}
+
+class MemPortIo() extends Bundle {
+  val req    = Input(new DecoupledIO(new MemReq()))
+  val resp   = Output(new DecoupledIO(new MemResp()))
+}
+
+class BorgCoreIo() extends Bundle
+{
+  val imem = new MemPortIo()
 //  val reset_vector = Input(UInt(32.W))
 //
 //  val debug_out = Output(UInt(32.W))
-//}
+}
 //
 //case class BorgCoreParams(
 //  xprlen: Int = 32
@@ -51,8 +80,8 @@
 //
 //import Instructions._
 //
-//class BorgControlPath(implicit val conf: BorgCoreParams) extends Module
-//{
+class BorgControlPath() extends Module
+{
 //  // Input and output signals for the control unit
 //  val io = IO(new BorgControlPathIo())
 //  io.ctl.alu_fun := DontCare
@@ -71,8 +100,8 @@
 //
 //  // Set the data path control signals
 //  io.ctl.alu_fun := cs_alu_fun
-//}
-//
+}
+
 //// Signals from the control unit to the data path unit
 //class CtlToDatIo() extends Bundle() {
 //
@@ -112,8 +141,8 @@
 //  val RS1_LSB = 15
 //}
 //
-//class BorgDataPath(implicit val p: Parameters, val conf: BorgCoreParams) extends Module
-//{
+class BorgDataPath() extends Module
+{
 //  val io = IO(new BorgDpathIo())
 //  io := DontCare
 //
@@ -178,15 +207,19 @@
 //
 //  // To control unit
 //  io.dat.inst := inst
-//}
-//
-//class BorgCore(implicit val p: Parameters, val conf: BorgCoreParams) extends Module
-//{
-//  val io = IO(new BorgCoreIo())
+}
+
+class BorgCore(implicit val p: Parameters) extends Module
+{
+  val io = IO(new BorgCoreIo())
 //  //io := DontCare
-//  val c  = Module(new BorgControlPath())
-//  val d  = Module(new BorgDataPath())
-//
+  val c  = Module(new BorgControlPath())
+  val d  = Module(new BorgDataPath())
+
+  // TODO
+  io.imem.resp.ready := DontCare
+  io.imem.resp.valid := DontCare
+  io.imem.resp.bits := DontCare
 //  io.debug_out := d.io.debug_out
 //
 //  // TMP
@@ -201,12 +234,4 @@
 //  io.imem <> d.io.imem
 //
 //  d.io.reset_vector := io.reset_vector
-//}
-//
-//class BorgTile(implicit val p: Parameters, val conf: BorgCoreParams) extends Module
-//{
-//  val borgCore = Module(new BorgCore())
-//  borgCore.io := DontCare
-//  def dummy_addi_instruction = BitPat.bitPatToUInt(BitPat("b00000000000000000000000000010011"))
-//  val rom = VecInit(dummy_addi_instruction)
-//}
+}

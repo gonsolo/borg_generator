@@ -12,6 +12,7 @@ import freechips.rocketchip.resources.{SimpleDevice}
 import freechips.rocketchip.tilelink.{TLClientNode, TLFragmenter, TLMasterParameters, TLMasterPortParameters, TLRegisterNode}
 import org.chipsalliance.cde.config.{Parameters, Field, Config}
 import org.chipsalliance.diplomacy.lazymodule.{LazyModule, LazyModuleImp}
+import scala.language.reflectiveCalls
 
 case class BorgConfig()
 
@@ -46,7 +47,6 @@ class BorgModuleImp(outer: Borg) extends LazyModuleImp(outer) {
 
   val (mem, edge) = outer.dmaNode.out(0)
   val addressBits = edge.bundle.addressBits
-  //val dmaBase = 0x88000000L
   val dmaSize = 16 * 64 // 1024 bytes
   val instructionSize = dmaSize / 4 // instructions are 32 bit wide
   val instructionWidth = UInt(32.W)
@@ -68,6 +68,16 @@ class BorgModuleImp(outer: Borg) extends LazyModuleImp(outer) {
   mem.a.bits := getPutBits
   data := mem.d.bits.data
   val dValidSeen = RegInit(false.B)
+
+  // TODO: Connect this to memory
+  val scratchPadMemory = Module(new AsyncScratchPadMemory(num_core_ports = 2))
+  // TODO
+  scratchPadMemory.io.core_ports(1).resp.ready := DontCare
+  scratchPadMemory.io.core_ports(1).resp.valid := DontCare
+  scratchPadMemory.io.core_ports(1).resp.bits := DontCare
+
+  val core = Module(new BorgCore())
+  core.io.imem <> scratchPadMemory.io.core_ports(0)
 
   switch (state) {
     is (s_idle) {
