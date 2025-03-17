@@ -1,69 +1,41 @@
 import borg._
 import chisel3._
 import chisel3.simulator.EphemeralSimulator._
-import org.scalatest.flatspec.AnyFlatSpec
 import org.chipsalliance.cde.config.Parameters
+import org.scalatest.flatspec.AnyFlatSpec
+import scala.language.reflectiveCalls
 
 class BorgTest extends AnyFlatSpec {
+
+  class TestModule extends Module {
+    // Use the same memory as in the actual hardware.
+    // This should be factored out later.
+    val dmaSize = 16 * 64 // 1024 bytes
+    val instructionSize = dmaSize / 4 // 256 instructions, 32 bits/4 bytes wide
+    val instructionWidth = UInt(32.W)
+    val memory = Mem(instructionSize, instructionWidth) // 256 instructions a 4 bytes = 1024 bytes
+    memory(0) := "b00000000000000000000010100010011".U // r0 = mov rZ
+    memory(1) := "b10101010101010101010101010101010".U // test data
+
+    // TODO: Connect this to memory
+    val scratchPadMemory = Module(new AsyncScratchPadMemory(num_core_ports = 2))
+    // TODO
+    scratchPadMemory.io.core_ports(1).resp.ready := DontCare
+    scratchPadMemory.io.core_ports(1).resp.valid := DontCare
+    scratchPadMemory.io.core_ports(1).resp.bits := DontCare
+
+    val params = new WithBorg()
+    val core = Module(new BorgCore()(params))
+    core.io.imem <> scratchPadMemory.io.core_ports(0)
+  }
+
   behavior of "Borg"
   it should "instantiate" in {
-    val params = new WithBorg()
-    //val config = new BorgConfig()
-    //val borg = new Borg(8)(params)
-    simulate(new BorgCore()(params)) { core =>
-
+    simulate(new TestModule) { test =>
         println("Reset ok.")
-        core.clock.step()
+        test.clock.step()
         println("Step ok.")
     }
   }
 }
 
-///class ResetTest extends AnyFlatSpec {
-//  behavior of "BorgCore"
-//  it should "be fully connected" in {
-//    val params = new WithBorg
-//    val conf = new BorgCoreParams
-//    simulate(new BorgCore()(params, conf)) { core =>
-//      println("Reset ok.")
-//    }
-//  }
-//}
-
-//class StepTest extends AnyFlatSpec {
-//  behavior of "BorgCore"
-//  it should "reset and step" in {
-//    val params = new WithBorg
-//    val conf = new BorgCoreParams
-//    simulate(new BorgCore()(params, conf)) { core =>
-//      core.io.reset_vector.poke(0.U)
-//      core.clock.step()
-//      core.io.debug_out.expect(4.U)
-//      core.clock.step()
-//      core.io.debug_out.expect(8.U)
-//      core.clock.step()
-//      core.io.debug_out.expect(12.U)
-//      core.clock.step()
-//      core.io.debug_out.expect(16.U)
-//      core.reset.poke(1)
-//      core.clock.step()
-//      core.reset.poke(0)
-//      core.clock.step()
-//      core.io.debug_out.expect(4.U)
-//      core.clock.step()
-//      core.io.debug_out.expect(8.U)
-//      println("Pc counter now: " + core.io.debug_out.peek().litValue)
-//    }
-//  }
-//}
-//
-//class TileTest extends AnyFlatSpec {
-//  behavior of "BorgTile"
-//  it should "initialize" in {
-//    val params = new WithBorg
-//    val conf = new BorgCoreParams
-//    simulate(new BorgTile()(params, conf)) { tile =>
-//      // TODO
-//    }
-//  }
-//}
