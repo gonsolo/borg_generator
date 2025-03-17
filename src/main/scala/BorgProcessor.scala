@@ -8,24 +8,38 @@ import chisel3.util._
 import org.chipsalliance.cde.config.{Parameters}
 import scala.language.reflectiveCalls
 
-//import org.chipsalliance.cde.config.Parameters
-//
-//import scala.collection.immutable.ArraySeq.unsafeWrapArray
+trait MemoryOpConstants {
+  val DPORT = 0
+  val IPORT = 1
+}
 
-class AsyncScratchPadMemory(num_core_ports: Int) extends Module
+object Constants extends MemoryOpConstants {}
+
+import Constants._
+
+class AsyncScratchPadMemory(num_core_ports: Int, memory: Mem[UInt]) extends Module
 {
-  val io = IO(new Bundle
-    {
-      val core_ports = Vec(num_core_ports, Flipped(new MemPortIo()))
-    })
+  val io = IO(new Bundle {
+    val core_ports = Vec(num_core_ports, Flipped(new MemPortIo()))
+  })
 
-  // TODO
-  io.core_ports(0).req.ready := DontCare
-  io.core_ports(0).req.valid := DontCare
-  io.core_ports(0).req.bits := DontCare
-  io.core_ports(1).req.ready := DontCare
-  io.core_ports(1).req.valid := DontCare
-  io.core_ports(1).req.bits := DontCare
+  when (io.core_ports(IPORT).req.valid) {
+    io.core_ports(IPORT).resp.valid := RegNext(io.core_ports(IPORT).req.valid)
+    // TODO io.core_ports(IPORT).resp.bits.data := memory(io.core_ports(IPORT).req.bits.addr)
+  }
+
+  io.core_ports(IPORT).req.ready := true.B
+  io.core_ports(IPORT).req.valid := DontCare
+  io.core_ports(IPORT).req.bits := DontCare
+  io.core_ports(IPORT).resp.valid := DontCare
+  io.core_ports(IPORT).resp.bits.data := DontCare
+
+  io.core_ports(DPORT).req.ready := DontCare
+  io.core_ports(DPORT).req.valid := DontCare
+  io.core_ports(DPORT).req.bits := DontCare
+
+  io.core_ports(DPORT).resp.valid := DontCare
+  io.core_ports(DPORT).resp.bits.data := DontCare
 }
 
 class MemReq() extends Bundle {
@@ -37,8 +51,8 @@ class MemResp() extends Bundle {
 }
 
 class MemPortIo() extends Bundle {
-  val req    = Input(new DecoupledIO(new MemReq()))
-  val resp   = Output(new DecoupledIO(new MemResp()))
+  val req    = new DecoupledIO(new MemReq())
+  val resp   = Flipped(new ValidIO(new MemResp()))
 }
 
 class BorgCoreIo() extends Bundle
@@ -217,9 +231,10 @@ class BorgCore(implicit val p: Parameters) extends Module
   val d  = Module(new BorgDataPath())
 
   // TODO
-  io.imem.resp.ready := DontCare
   io.imem.resp.valid := DontCare
   io.imem.resp.bits := DontCare
+  io.imem.req.valid := DontCare
+  io.imem.req.bits.addr := DontCare
 //  io.debug_out := d.io.debug_out
 //
 //  // TMP

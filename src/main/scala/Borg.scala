@@ -70,9 +70,8 @@ class BorgModuleImp(outer: Borg) extends LazyModuleImp(outer) {
   val dValidSeen = RegInit(false.B)
 
   // TODO: Connect this to memory
-  val scratchPadMemory = Module(new AsyncScratchPadMemory(num_core_ports = 2))
+  val scratchPadMemory = Module(new AsyncScratchPadMemory(num_core_ports = 2, memory = memory))
   // TODO
-  scratchPadMemory.io.core_ports(1).resp.ready := DontCare
   scratchPadMemory.io.core_ports(1).resp.valid := DontCare
   scratchPadMemory.io.core_ports(1).resp.bits := DontCare
 
