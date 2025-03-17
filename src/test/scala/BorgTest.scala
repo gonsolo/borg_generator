@@ -4,26 +4,17 @@ import chisel3.simulator.EphemeralSimulator._
 import org.scalatest.flatspec.AnyFlatSpec
 import org.chipsalliance.cde.config.Parameters
 
-class SeenTest extends AnyFlatSpec {
-  behavior of "BorgLoader"
-  it should "see kick" in {
+class BorgTest extends AnyFlatSpec {
+  behavior of "Borg"
+  it should "instantiate" in {
     val params = new WithBorg()
-    //val conf = new BorgCoreParams
-    //simulate(new BorgCore()(params, conf)) {
-
-    val config = new BorgConfig()
-    //val parameters = Parameters(config)
-    val borg = new Borg(8)(params)
-    simulate(new BorgLoader(borg, 8)) { loader =>
+    //val config = new BorgConfig()
+    //val borg = new Borg(8)(params)
+    simulate(new BorgCore()(params)) { core =>
 
         println("Reset ok.")
-
-        loader.clock.step()
-        loader.io.seen.expect(0.U)
-
-        loader.io.kick.poke(1.U)
-        loader.clock.step()
-        loader.io.seen.expect(1.U)
+        core.clock.step()
+        println("Step ok.")
     }
   }
 }

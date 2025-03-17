@@ -1,8 +1,8 @@
-ThisBuild / scalaVersion     := "2.13.15"
+ThisBuild / scalaVersion     := "2.13.16"
 ThisBuild / version          := "0.1"
 ThisBuild / organization     := "org.gonsolo"
 
-val chisel6Version = "6.6.0"
+val chisel6Version = "6.7.0"
 
 lazy val root = (project in file("."))
   .settings(
