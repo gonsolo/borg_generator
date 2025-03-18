@@ -17,11 +17,15 @@ class BorgTest extends AnyFlatSpec {
     memory(0) := "b00000000000000000000010100010011".U // r0 = mov rZ
     memory(1) := "b10101010101010101010101010101010".U // test data
 
-    //val scratchPadMemory = Module(new AsyncScratchPadMemory(num_core_ports = 2, memory = memory))
-    // TODO
-    //scratchPadMemory.io.core_ports(1).resp.ready := DontCare
-    //scratchPadMemory.io.core_ports(1).resp.valid := DontCare
-    //scratchPadMemory.io.core_ports(1).resp.bits := DontCare
+    val scratchPadMemory = Module(new AsyncScratchPadMemory(
+      num_core_ports = 2,
+      instructionSize = instructionSize,
+      instructionWidth = instructionWidth))
+    for (port <- scratchPadMemory.io.core_ports) {
+      port.req.ready := DontCare
+      port.req.valid := DontCare
+      port.req.bits.addr := DontCare
+    }
 
     val params = new WithBorg()
     //val core = Module(new BorgCore()(params))

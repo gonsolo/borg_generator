@@ -17,29 +17,24 @@ object Constants extends MemoryOpConstants {}
 
 import Constants._
 
-class AsyncScratchPadMemory(num_core_ports: Int, memory: Mem[UInt]) extends Module
+class AsyncScratchPadMemory(num_core_ports: Int, instructionSize: Int, instructionWidth: UInt) extends Module
 {
   val io = IO(new Bundle {
     val core_ports = Vec(num_core_ports, Flipped(new MemPortIo()))
   })
 
-  when (io.core_ports(IPORT).req.valid) {
-    io.core_ports(IPORT).resp.valid := RegNext(io.core_ports(IPORT).req.valid)
-    // TODO io.core_ports(IPORT).resp.bits.data := memory(io.core_ports(IPORT).req.bits.addr)
+  for (port <- io.core_ports) {
+    port.req.ready := DontCare
+    port.resp.valid := DontCare
+    port.resp.bits.data := DontCare
   }
 
-  io.core_ports(IPORT).req.ready := true.B
-  io.core_ports(IPORT).req.valid := DontCare
-  io.core_ports(IPORT).req.bits := DontCare
-  io.core_ports(IPORT).resp.valid := DontCare
-  io.core_ports(IPORT).resp.bits.data := DontCare
+  val memory = Mem(instructionSize, instructionWidth)
 
-  io.core_ports(DPORT).req.ready := DontCare
-  io.core_ports(DPORT).req.valid := DontCare
-  io.core_ports(DPORT).req.bits := DontCare
-
-  io.core_ports(DPORT).resp.valid := DontCare
-  io.core_ports(DPORT).resp.bits.data := DontCare
+  when (io.core_ports(IPORT).req.valid) {
+    io.core_ports(IPORT).resp.valid := RegNext(io.core_ports(IPORT).req.valid)
+    io.core_ports(IPORT).resp.bits.data := memory(io.core_ports(IPORT).req.bits.addr)
+  }
 }
 
 class MemReq() extends Bundle {
@@ -231,10 +226,10 @@ class BorgCore(implicit val p: Parameters) extends Module
   val d  = Module(new BorgDataPath())
 
   // TODO
-  io.imem.resp.valid := DontCare
-  io.imem.resp.bits := DontCare
-  io.imem.req.valid := DontCare
-  io.imem.req.bits.addr := DontCare
+  //io.imem.resp.valid := DontCare
+  //io.imem.resp.bits := DontCare
+  //io.imem.req.valid := DontCare
+  //io.imem.req.bits.addr := DontCare
 //  io.debug_out := d.io.debug_out
 //
 //  // TMP

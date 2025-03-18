@@ -47,6 +47,7 @@ class BorgModuleImp(outer: Borg) extends LazyModuleImp(outer) {
 
   val (mem, edge) = outer.dmaNode.out(0)
   val addressBits = edge.bundle.addressBits
+
   val dmaSize = 16 * 64 // 1024 bytes
   val instructionSize = dmaSize / 4 // instructions are 32 bit wide
   val instructionWidth = UInt(32.W)
@@ -56,7 +57,8 @@ class BorgModuleImp(outer: Borg) extends LazyModuleImp(outer) {
   val dmaSizeWidth = log2Ceil(dmaSize+1).W
   val bytesLeft = Reg(UInt(dmaSizeWidth))
   val data = Reg(UInt(64.W))
-  val memory = Mem(instructionSize, instructionWidth)
+
+
   val memoryIndex = RegInit(0.U(dmaSizeWidth))
 
   val src = WireInit(0.U)
@@ -69,28 +71,22 @@ class BorgModuleImp(outer: Borg) extends LazyModuleImp(outer) {
   data := mem.d.bits.data
   val dValidSeen = RegInit(false.B)
 
-  // TODO: Connect this to memory
-  val scratchPadMemory = Module(new AsyncScratchPadMemory(num_core_ports = 2, memory = memory))
-  // TODO
-  scratchPadMemory.io.core_ports(1).resp.valid := DontCare
-  scratchPadMemory.io.core_ports(1).resp.bits := DontCare
+  val scratchPadMemory = Module(new AsyncScratchPadMemory(num_core_ports = 2, instructionSize, instructionWidth))
 
   val core = Module(new BorgCore())
-  core.io.imem <> scratchPadMemory.io.core_ports(0)
+  //core.io.imem <> scratchPadMemory.io.core_ports(0)
 
   switch (state) {
     is (s_idle) {
       mem.a.valid := false.B
       mem.d.ready := false.B
       when (kick === 1.U) {
-        //address := dmaBase.U
         address := shaderBase
         bytesLeft := dmaSize.U
         memoryIndex := 0.U
         completed := false.B
         state := s_read
       }
-      //for ( i <- 0 to 15) { printf(cf"Borg memory $i: 0x${memory(i)}%x\n") }
     }
     is (s_read) {
       mem.a.valid := true.B
@@ -106,8 +102,8 @@ class BorgModuleImp(outer: Borg) extends LazyModuleImp(outer) {
       mem.d.ready := true.B
       when (mem.d.valid === true.B) {
         dValidSeen := true.B
-        memory(memoryIndex) := mem.d.bits.data
-        memory(memoryIndex+1.U) := mem.d.bits.data >> 32
+        scratchPadMemory.memory(memoryIndex) := mem.d.bits.data
+        scratchPadMemory.memory(memoryIndex+1.U) := mem.d.bits.data >> 32
         memoryIndex := memoryIndex + 2.U
       }
       when (dValidSeen === true.B && mem.d.valid === false.B) {
@@ -121,7 +117,7 @@ class BorgModuleImp(outer: Borg) extends LazyModuleImp(outer) {
       completed := true.B
       state := s_idle
 
-      for ( i <- 0 to 1) { printf(cf"Borg memory $i: 0b${memory(i)}%b\n") }
+      for ( i <- 0 to 1) { printf(cf"Borg memory $i: 0b${scratchPadMemory.memory(i)}%b\n") }
     }
   }
   outer.registerNode.regmap(
