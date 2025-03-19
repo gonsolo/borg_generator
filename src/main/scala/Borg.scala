@@ -50,7 +50,7 @@ class BorgModuleImp(outer: Borg) extends LazyModuleImp(outer) {
 
   val dmaSize = 16 * 64 // 1024 bytes
   val instructionSize = dmaSize / 4 // instructions are 32 bit wide
-  val instructionWidth = UInt(32.W)
+  val instructionWidth = 32
 
   val s_idle :: s_read :: s_response :: s_shader :: Nil = Enum(4)
   val state = RegInit(s_idle)

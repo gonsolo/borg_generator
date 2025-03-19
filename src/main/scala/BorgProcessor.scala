@@ -11,48 +11,67 @@ import scala.language.reflectiveCalls
 trait MemoryOpConstants {
   val DPORT = 0
   val IPORT = 1
+
+  val M_X = "b0".asUInt(1.W)
+  val M_XREAD = "b0".asUInt(1.W)
+  val M_XWRITE= "b1".asUInt(1.W)
 }
 
 object Constants extends MemoryOpConstants {}
 
 import Constants._
 
-class AsyncScratchPadMemory(num_core_ports: Int, instructionSize: Int, instructionWidth: UInt) extends Module
+class AsyncScratchPadMemory(num_core_ports: Int, instructionSize: Int, instructionWidth: Int) extends Module
 {
   val io = IO(new Bundle {
-    val core_ports = Vec(num_core_ports, Flipped(new MemPortIo()))
+    val core_ports = Vec(num_core_ports, Flipped(new MemoryPortIo()))
   })
 
   for (port <- io.core_ports) {
-    port.req.ready := DontCare
-    port.resp.valid := DontCare
-    port.resp.bits.data := DontCare
+    port.request.ready := DontCare
+    port.request.valid := DontCare
+    port.request.bits.function := DontCare
+    port.request.bits.data := DontCare
+    port.response.valid := DontCare
+    port.response.bits.data := DontCare
   }
 
-  val memory = Mem(instructionSize, instructionWidth)
+  val memory = Mem(instructionSize, UInt(instructionWidth.W))
 
-  when (io.core_ports(IPORT).req.valid) {
-    io.core_ports(IPORT).resp.valid := RegNext(io.core_ports(IPORT).req.valid)
-    io.core_ports(IPORT).resp.bits.data := memory(io.core_ports(IPORT).req.bits.addr)
+  when (io.core_ports(IPORT).request.valid) {
+    printf(cf"Borg scratchpad request valid\n")
+    io.core_ports(IPORT).response.valid := RegNext(io.core_ports(IPORT).request.valid)
+    switch (io.core_ports(IPORT).request.bits.function) {
+      is (M_XREAD) {
+        printf(cf"Borg scratchpad read\n")
+        io.core_ports(IPORT).response.bits.data := memory(io.core_ports(IPORT).request.bits.address)
+      }
+      is (M_XWRITE) {
+        printf(cf"Borg scratchpad write\n")
+        memory(io.core_ports(IPORT).request.bits.address) := io.core_ports(IPORT).request.bits.data
+      }
+    }
   }
 }
 
-class MemReq() extends Bundle {
-  val addr = Output(UInt(32.W))
-}
-
-class MemResp() extends Bundle {
+class MemoryRequest() extends Bundle {
+  val address = Output(UInt(32.W))
+  val function = Output(UInt(M_X.getWidth.W))
   val data = Output(UInt(32.W))
 }
 
-class MemPortIo() extends Bundle {
-  val req    = new DecoupledIO(new MemReq())
-  val resp   = Flipped(new ValidIO(new MemResp()))
+class MemoryResponse() extends Bundle {
+  val data = Output(UInt(32.W))
+}
+
+class MemoryPortIo() extends Bundle {
+  val request    = new DecoupledIO(new MemoryRequest())
+  val response   = Flipped(new ValidIO(new MemoryResponse()))
 }
 
 class BorgCoreIo() extends Bundle
 {
-  val imem = new MemPortIo()
+  val imem = new MemoryPortIo()
 //  val reset_vector = Input(UInt(32.W))
 //
 //  val debug_out = Output(UInt(32.W))
