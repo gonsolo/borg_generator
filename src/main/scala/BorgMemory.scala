@@ -20,6 +20,21 @@ object Constants extends MemoryOpConstants {}
 
 import Constants._
 
+class MemoryRequest() extends Bundle {
+  val address = Output(UInt(32.W))
+  val function = Output(UInt(M_X.getWidth.W))
+  val data = Output(UInt(32.W))
+}
+
+class MemoryResponse() extends Bundle {
+  val data = Output(UInt(32.W))
+}
+
+class MemoryPortIo() extends Bundle {
+  val request    = new DecoupledIO(new MemoryRequest())
+  val response   = Flipped(new ValidIO(new MemoryResponse()))
+}
+
 class AsyncScratchPadMemory(num_core_ports: Int, instructionSize: Int, instructionWidth: Int) extends Module
 {
   val io = IO(new Bundle {
@@ -37,34 +52,18 @@ class AsyncScratchPadMemory(num_core_ports: Int, instructionSize: Int, instructi
 
   val memory = Mem(instructionSize, UInt(instructionWidth.W))
 
+  for ( i <- 0 to 1) { printf(cf"Borg memory $i: 0b${memory(i)}%b\n") }
+
   when (io.core_ports(IPORT).request.valid) {
-    printf(cf"Borg scratchpad request valid\n")
     io.core_ports(IPORT).response.valid := RegNext(io.core_ports(IPORT).request.valid)
     switch (io.core_ports(IPORT).request.bits.function) {
       is (M_XREAD) {
-        printf(cf"Borg scratchpad read\n")
         io.core_ports(IPORT).response.bits.data := memory(io.core_ports(IPORT).request.bits.address)
       }
       is (M_XWRITE) {
-        printf(cf"Borg scratchpad write\n")
         memory(io.core_ports(IPORT).request.bits.address) := io.core_ports(IPORT).request.bits.data
       }
     }
   }
-}
-
-class MemoryRequest() extends Bundle {
-  val address = Output(UInt(32.W))
-  val function = Output(UInt(M_X.getWidth.W))
-  val data = Output(UInt(32.W))
-}
-
-class MemoryResponse() extends Bundle {
-  val data = Output(UInt(32.W))
-}
-
-class MemoryPortIo() extends Bundle {
-  val request    = new DecoupledIO(new MemoryRequest())
-  val response   = Flipped(new ValidIO(new MemoryResponse()))
 }
 
