@@ -86,10 +86,13 @@ class BorgModuleImp(outer: Borg) extends LazyModuleImp(outer) {
 
 
   val core = Module(new BorgCore())
+  core.io.imem.request.ready := DontCare
   core.io.imem.request.valid := DontCare
   core.io.imem.request.bits.address := DontCare
   core.io.imem.request.bits.function := DontCare
   core.io.imem.request.bits.data := DontCare
+  core.io.imem.response.valid := DontCare
+  core.io.imem.response.bits.data := DontCare
   //core.io.imem <> scratchPadMemory.io.core_ports(0)
 
   switch (state) {
