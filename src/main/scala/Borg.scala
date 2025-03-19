@@ -71,7 +71,9 @@ class BorgModuleImp(outer: Borg) extends LazyModuleImp(outer) {
   mem.a.bits := getPutBits
   data := mem.d.bits.data
   val dValidSeen = RegInit(false.B)
-  val dFirstSeen = RegInit(false.B)
+  val dFirstDone = RegInit(false.B)
+  val secondMemoryIndex = RegInit(0.U(dmaSizeWidth))
+  val secondData = RegInit(data)
 
   val scratchPadMemory = Module(new AsyncScratchPadMemory(num_core_ports = 2, instructionSize, instructionWidth))
   for (port <- scratchPadMemory.io.core_ports) {
@@ -121,19 +123,28 @@ class BorgModuleImp(outer: Borg) extends LazyModuleImp(outer) {
       mem.d.ready := true.B
       when (mem.d.valid === true.B) {
 
-        scratchPadMemory.io.core_ports(IPORT).request.bits.address := memoryIndex
-        scratchPadMemory.io.core_ports(IPORT).request.bits.function := M_XWRITE
-        scratchPadMemory.io.core_ports(IPORT).request.bits.data := mem.d.bits.data
-        scratchPadMemory.io.core_ports(IPORT).request.valid := true.B
-        memoryIndex := memoryIndex + 1.U
-
-        dFirstSeen := true.B
-
-        when (dFirstSeen === true.B) {
-          dFirstSeen := false.B
-          dValidSeen := true.B
+        switch (dFirstDone) {
+          is (false.B) {
+            scratchPadMemory.io.core_ports(IPORT).request.bits.address := memoryIndex
+            scratchPadMemory.io.core_ports(IPORT).request.bits.function := M_XWRITE
+            scratchPadMemory.io.core_ports(IPORT).request.bits.data := mem.d.bits.data
+            scratchPadMemory.io.core_ports(IPORT).request.valid := true.B
+            secondMemoryIndex := memoryIndex + 1.U
+            secondData := mem.d.bits.data >> 32
+            memoryIndex := memoryIndex + 2.U
+            dFirstDone := true.B
+            mem.d.ready := false.B
+          }
+          is (true.B) {
+            scratchPadMemory.io.core_ports(IPORT).request.bits.address := memoryIndex
+            scratchPadMemory.io.core_ports(IPORT).request.bits.function := M_XWRITE
+            scratchPadMemory.io.core_ports(IPORT).request.bits.data := secondData
+            scratchPadMemory.io.core_ports(IPORT).request.valid := true.B
+            dFirstDone:= false.B
+            dValidSeen := true.B
+            mem.d.ready := true.B
+          }
         }
-
         //scratchPadMemory.memory(memoryIndex) := mem.d.bits.data
         //scratchPadMemory.memory(memoryIndex+1.U) := mem.d.bits.data >> 32
         //memoryIndex := memoryIndex + 2.U
