@@ -13,6 +13,7 @@ import freechips.rocketchip.tilelink.{TLClientNode, TLFragmenter, TLMasterParame
 import org.chipsalliance.cde.config.{Parameters, Field, Config}
 import org.chipsalliance.diplomacy.lazymodule.{LazyModule, LazyModuleImp}
 import scala.language.reflectiveCalls
+import Constants._
 
 case class BorgConfig()
 
@@ -70,6 +71,7 @@ class BorgModuleImp(outer: Borg) extends LazyModuleImp(outer) {
   mem.a.bits := getPutBits
   data := mem.d.bits.data
   val dValidSeen = RegInit(false.B)
+  val dFirstSeen = RegInit(false.B)
 
   val scratchPadMemory = Module(new AsyncScratchPadMemory(num_core_ports = 2, instructionSize, instructionWidth))
 
@@ -101,10 +103,23 @@ class BorgModuleImp(outer: Borg) extends LazyModuleImp(outer) {
       mem.a.valid := false.B
       mem.d.ready := true.B
       when (mem.d.valid === true.B) {
-        dValidSeen := true.B
-        scratchPadMemory.memory(memoryIndex) := mem.d.bits.data
-        scratchPadMemory.memory(memoryIndex+1.U) := mem.d.bits.data >> 32
-        memoryIndex := memoryIndex + 2.U
+
+        scratchPadMemory.io.core_ports(IPORT).request.bits.address := memoryIndex
+        scratchPadMemory.io.core_ports(IPORT).request.bits.function := M_XWRITE
+        scratchPadMemory.io.core_ports(IPORT).request.bits.data := mem.d.bits.data
+        scratchPadMemory.io.core_ports(IPORT).request.valid := true.B
+        memoryIndex := memoryIndex + 1.U
+
+        dFirstSeen := true.B
+
+        when (dFirstSeen === true.B) {
+          dFirstSeen := false.B
+          dValidSeen := true.B
+        }
+
+        //scratchPadMemory.memory(memoryIndex) := mem.d.bits.data
+        //scratchPadMemory.memory(memoryIndex+1.U) := mem.d.bits.data >> 32
+        //memoryIndex := memoryIndex + 2.U
       }
       when (dValidSeen === true.B && mem.d.valid === false.B) {
         dValidSeen := false.B
