@@ -74,8 +74,22 @@ class BorgModuleImp(outer: Borg) extends LazyModuleImp(outer) {
   val dFirstSeen = RegInit(false.B)
 
   val scratchPadMemory = Module(new AsyncScratchPadMemory(num_core_ports = 2, instructionSize, instructionWidth))
+  for (port <- scratchPadMemory.io.core_ports) {
+    port.request.ready := DontCare
+    port.request.valid := DontCare
+    port.request.bits.function := DontCare
+    port.request.bits.address := DontCare
+    port.request.bits.data := DontCare
+    port.response.valid := DontCare
+    port.response.bits.data := DontCare
+  }
+
 
   val core = Module(new BorgCore())
+  core.io.imem.request.valid := DontCare
+  core.io.imem.request.bits.address := DontCare
+  core.io.imem.request.bits.function := DontCare
+  core.io.imem.request.bits.data := DontCare
   //core.io.imem <> scratchPadMemory.io.core_ports(0)
 
   switch (state) {
@@ -132,7 +146,7 @@ class BorgModuleImp(outer: Borg) extends LazyModuleImp(outer) {
       completed := true.B
       state := s_idle
 
-      for ( i <- 0 to 1) { printf(cf"Borg memory $i: 0b${scratchPadMemory.memory(i)}%b\n") }
+      //for ( i <- 0 to 1) { printf(cf"Borg memory $i: 0b${scratchPadMemory.memory(i)}%b\n") }
     }
   }
   outer.registerNode.regmap(
