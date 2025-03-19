@@ -7,41 +7,34 @@ import scala.language.reflectiveCalls
 
 import Constants._
 
-class BorgTest extends AnyFlatSpec {
+class TestModule extends Module {
+  val instructionPort = IO(Flipped(new MemoryPortIo))
+  instructionPort.request.ready := DontCare
+  instructionPort.response.valid := DontCare
+  instructionPort.response.bits.data := DontCare
 
-  val instruction1 = "b00000000000000000000010100010011".U // r0 = mov rZ
-  val instruction2 = "b10101010101010101010101010101010".U // test data
+  val dmaSize = 8 // bytes
+  val instructionSize = dmaSize / 4 // 2 instructions
+  val instructionWidth = 32
 
-  class TestModule extends Module {
-    val instructionPort = IO(Flipped(new MemoryPortIo))
-    instructionPort.request.ready := DontCare
-    instructionPort.response.valid := DontCare
-    instructionPort.response.bits.data := DontCare
-
-    val dmaSize = 8 // bytes
-    val instructionSize = dmaSize / 4 // 2 instructions
-    val instructionWidth = 32
-
-    val scratchPadMemory = Module(new AsyncScratchPadMemory(
-      num_core_ports = 2,
-      instructionSize = instructionSize,
-      instructionWidth = instructionWidth))
-    for (port <- scratchPadMemory.io.core_ports) {
-      port.request.ready := DontCare
-      port.request.valid := DontCare
-      port.request.bits.function := DontCare
-      port.request.bits.address := DontCare
-      port.request.bits.data := DontCare
-      port.response.valid := DontCare
-      port.response.bits.data := DontCare
-    }
-
-    scratchPadMemory.io.core_ports(IPORT) <> instructionPort
-
-    //val parameters = new WithBorg()
-    //val core = Module(new BorgCore()(params))
-    //core.io.imem <> scratchPadMemory.io.core_ports(0)
+  val scratchPadMemory = Module(new AsyncScratchPadMemory(
+    num_core_ports = 2,
+    instructionSize = instructionSize,
+    instructionWidth = instructionWidth))
+  for (port <- scratchPadMemory.io.core_ports) {
+    port.request.ready := DontCare
+    port.request.valid := DontCare
+    port.request.bits.function := DontCare
+    port.request.bits.address := DontCare
+    port.request.bits.data := DontCare
+    port.response.valid := DontCare
+    port.response.bits.data := DontCare
   }
+
+  scratchPadMemory.io.core_ports(IPORT) <> instructionPort
+}
+
+class BorgTest extends AnyFlatSpec {
 
   behavior of "Borg"
   it should "instantiate" in {
@@ -51,6 +44,12 @@ class BorgTest extends AnyFlatSpec {
         println("Step ok.")
     }
   }
+}
+
+class BorgMemoryTest extends AnyFlatSpec {
+
+  val instruction1 = "b00000000000000000000010100010011".U // r0 = mov rZ
+  val instruction2 = "b10101010101010101010101010101010".U // test data
 
   behavior of "Memory"
   it should "read and write" in {
@@ -81,10 +80,20 @@ class BorgTest extends AnyFlatSpec {
      }
   }
 
+}
+
+class BorgCoreTest extends AnyFlatSpec {
+
+  class TestBorgCore extends Module {
+    val parameters = new WithBorg()
+    val core = Module(new BorgCore()(parameters))
+    core.io := DontCare
+  }
+
   behavior of "Core"
   it should "not fail" in {
     val parameters = new WithBorg()
-    simulate(new BorgCore()(parameters)) { core =>
+    simulate(new TestBorgCore) { core =>
       core.clock.step()
     }
   }
