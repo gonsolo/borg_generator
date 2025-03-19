@@ -182,10 +182,10 @@ class BorgCore(implicit val p: Parameters) extends Module
   val c  = Module(new BorgControlPath())
   val d  = Module(new BorgDataPath())
 
-// io_imem_request_valid
-// io_imem_request_bits_address
-// io_imem_request_bits_function
-// io_imem_request_bits_data
+  io.imem.request.valid := DontCare
+  io.imem.request.bits.address := DontCare
+  io.imem.request.bits.function := DontCare
+  io.imem.request.bits.data := DontCare
 
   // TODO
   io.imem.request.valid := DontCare

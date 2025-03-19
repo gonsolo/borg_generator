@@ -38,7 +38,7 @@ class BorgTest extends AnyFlatSpec {
 
     scratchPadMemory.io.core_ports(IPORT) <> instructionPort
 
-    val params = new WithBorg()
+    //val parameters = new WithBorg()
     //val core = Module(new BorgCore()(params))
     //core.io.imem <> scratchPadMemory.io.core_ports(0)
   }
@@ -79,6 +79,14 @@ class BorgTest extends AnyFlatSpec {
       test.instructionPort.response.valid.expect(1)
       test.instructionPort.response.bits.data.expect(instruction2)
      }
+  }
+
+  behavior of "Core"
+  it should "not fail" in {
+    val parameters = new WithBorg()
+    simulate(new BorgCore()(parameters)) { core =>
+      core.clock.step()
+    }
   }
 }
 
