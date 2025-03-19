@@ -138,7 +138,7 @@ class BorgModuleImp(outer: Borg) extends LazyModuleImp(outer) {
           }
           is (true.B) {
             printf(cf"Borg write second memory\n")
-            scratchPadMemory.io.core_ports(IPORT).request.bits.address := memoryIndex
+            scratchPadMemory.io.core_ports(IPORT).request.bits.address := secondMemoryIndex
             scratchPadMemory.io.core_ports(IPORT).request.bits.function := M_XWRITE
             scratchPadMemory.io.core_ports(IPORT).request.bits.data := secondData
             scratchPadMemory.io.core_ports(IPORT).request.valid := true.B
