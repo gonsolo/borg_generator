@@ -9,20 +9,18 @@ import Constants._
 
 class BorgTest extends AnyFlatSpec {
 
+  val instruction1 = "b00000000000000000000010100010011".U // r0 = mov rZ
+  val instruction2 = "b10101010101010101010101010101010".U // test data
+
   class TestModule extends Module {
     val instructionPort = IO(Flipped(new MemoryPortIo))
     instructionPort.request.ready := DontCare
     instructionPort.response.valid := DontCare
     instructionPort.response.bits.data := DontCare
 
-    // Use the same memory as in the actual hardware.
-    // This should be factored out later.
-    val dmaSize = 16 * 64 // 1024 bytes
-    val instructionSize = dmaSize / 4 // 256 instructions, 32 bits/4 bytes wide
+    val dmaSize = 8 // bytes
+    val instructionSize = dmaSize / 4 // 2 instructions
     val instructionWidth = 32
-    val memory = Mem(instructionSize, UInt(instructionWidth.W)) // 256 instructions a 4 bytes = 1024 bytes
-    memory(0) := "b00000000000000000000010100010011".U // r0 = mov rZ
-    memory(1) := "b10101010101010101010101010101010".U // test data
 
     val scratchPadMemory = Module(new AsyncScratchPadMemory(
       num_core_ports = 2,
@@ -59,7 +57,12 @@ class BorgTest extends AnyFlatSpec {
     simulate(new TestModule) { test =>
       test.instructionPort.request.bits.address.poke(0)
       test.instructionPort.request.bits.function.poke(M_XWRITE)
-      test.instructionPort.request.bits.data.poke(77)
+      test.instructionPort.request.bits.data.poke(instruction1)
+      test.instructionPort.request.valid.poke(true.B)
+      test.clock.step()
+      test.instructionPort.request.bits.address.poke(1)
+      test.instructionPort.request.bits.function.poke(M_XWRITE)
+      test.instructionPort.request.bits.data.poke(instruction2)
       test.instructionPort.request.valid.poke(true.B)
       test.clock.step()
       test.instructionPort.request.bits.address.poke(0)
@@ -67,8 +70,15 @@ class BorgTest extends AnyFlatSpec {
       test.instructionPort.request.valid.poke(true.B)
       test.clock.step()
       test.instructionPort.response.valid.expect(1)
-      test.instructionPort.response.bits.data.expect(77)
-    }
+      test.instructionPort.response.bits.data.expect(instruction1)
+      test.clock.step()
+      test.instructionPort.request.bits.address.poke(1)
+      test.instructionPort.request.bits.function.poke(M_XREAD)
+      test.instructionPort.request.valid.poke(true.B)
+      test.clock.step()
+      test.instructionPort.response.valid.expect(1)
+      test.instructionPort.response.bits.data.expect(instruction2)
+     }
   }
 }
 
