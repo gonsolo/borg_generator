@@ -95,6 +95,9 @@ class BorgCoreTest extends AnyFlatSpec {
     val parameters = new WithBorg()
     simulate(new TestBorgCore) { core =>
       core.clock.step()
+      core.clock.step()
+      core.clock.step()
+      core.clock.step()
     }
   }
 }

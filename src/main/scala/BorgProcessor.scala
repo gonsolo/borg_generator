@@ -7,12 +7,12 @@ import chisel3._
 import chisel3.util._
 import org.chipsalliance.cde.config.{Parameters}
 
+import Constants._
+
 class BorgCoreIo() extends Bundle
 {
   val imem = new MemoryPortIo()
-//  val reset_vector = Input(UInt(32.W))
-//
-//  val debug_out = Output(UInt(32.W))
+  val reset = Input(Bool())
 }
 //
 //case class BorgCoreParams(
@@ -74,31 +74,14 @@ class BorgControlPath() extends Module
 //  // The control unit decodes the instruction and set the correspong alu function for the data path unit
 //  val alu_fun = Output(UInt(ALU_X.getWidth.W))
 //}
-//class MemReq(data_width: Int) extends Bundle
-//{
-//  val addr = Output(UInt(32.W))
-//}
-//
-//class MemResp(data_width: Int) extends Bundle
-//{
-//  val data = Output(UInt(data_width.W))
-//}
-//
-//class MemPortIo(data_width: Int) extends Bundle
-//{
-//  val req = new DecoupledIO(new MemReq(data_width))
-//  val resp = Flipped(new ValidIO(new MemResp(data_width)))
-//}
-//
-//class BorgDpathIo(implicit val conf: BorgCoreParams) extends Bundle()
-//{
+
+class BorgDataPathIo() extends Bundle()
+{
 //  val ctl = Flipped(new CtlToDatIo())
 //  val dat = new DatToCtlIo()
-//  val imem = new MemPortIo(conf.xprlen)
-//  val reset_vector = Input(UInt())
-//
-//  val debug_out = Output(UInt(32.W))
-//}
+  val imem = new MemoryPortIo()
+  val reset = Input(Bool())
+}
 //
 //trait RISCVConstants {
 //  val RD_MSB = 11
@@ -109,27 +92,17 @@ class BorgControlPath() extends Module
 //
 class BorgDataPath() extends Module
 {
-//  val io = IO(new BorgDpathIo())
-//  io := DontCare
-//
-//  val pc_plus4 = Wire(UInt(32.W))
-//
-//  val pc_next = Wire(UInt(32.W))
-//  pc_next := pc_plus4
-//
-//  // The program counter
-//  val pc_reg = RegInit(io.reset_vector)
-//  when (true.B) { // No stall
-//    pc_reg := pc_next
-//  }
-//  // Get the counter out for testing
-//  io.debug_out := pc_reg
-//
-//  pc_plus4 := (pc_reg + 4.asUInt(32.W))
-//
-//  io.imem.req.bits.addr := pc_reg
-//  io.imem.req.valid := true.B
-//
+  val io = IO(new BorgDataPathIo())
+  //io := DontCare
+
+  val programCounter = RegInit(0.U(32.W))
+  programCounter := Mux(io.reset, 0.U, programCounter + 1.U)
+  io.imem.request.bits.address := programCounter
+  io.imem.request.bits.function:= M_XREAD
+  io.imem.request.bits.data := DontCare
+  io.imem.request.valid := true.B
+  printf(cf"Borg program counter: $programCounter\n")
+
 //  val regfile = Mem(32, UInt(conf.xprlen.W))
 //
 //  val inst = io.imem.resp.bits.data
@@ -182,21 +155,10 @@ class BorgCore(implicit val p: Parameters) extends Module
   val c  = Module(new BorgControlPath())
   val d  = Module(new BorgDataPath())
 
-  io.imem.request.valid := DontCare
-  io.imem.request.bits.address := DontCare
-  io.imem.request.bits.function := DontCare
-  io.imem.request.bits.data := DontCare
-
-  // TODO
-  io.imem.request.valid := DontCare
-  io.imem.request.bits.address := DontCare
-  io.imem.request.bits.function:= DontCare
-  io.imem.request.bits.data := DontCare
-  //io.imem.resp.valid := DontCare
-  //io.imem.resp.bits := DontCare
+//  io.imem.resp.valid := DontCare
+//  io.imem.resp.bits := DontCare
 //  io.debug_out := d.io.debug_out
 //
-//  // TMP
 //  d.io.imem.resp := DontCare
 //
 //  // Connect the control unit to the data path unit
@@ -204,8 +166,9 @@ class BorgCore(implicit val p: Parameters) extends Module
 //  // about the alu function
 //  c.io.ctl <> d.io.ctl
 //  c.io.dat <> d.io.dat
-//
-//  io.imem <> d.io.imem
-//
+
+  io.imem <> d.io.imem
+  io.reset <> d.io.reset
+
 //  d.io.reset_vector := io.reset_vector
 }

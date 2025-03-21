@@ -86,16 +86,15 @@ class BorgModuleImp(outer: Borg) extends LazyModuleImp(outer) {
     port.response.bits.data := DontCare
   }
 
-
   val core = Module(new BorgCore())
-  core.io.imem.request.ready := DontCare
-  core.io.imem.request.valid := DontCare
-  core.io.imem.request.bits.address := DontCare
-  core.io.imem.request.bits.function := DontCare
-  core.io.imem.request.bits.data := DontCare
+  //core.io.imem.request.ready := DontCare
+  //core.io.imem.request.valid := DontCare
+  //core.io.imem.request.bits.address := DontCare
+  //core.io.imem.request.bits.function := DontCare
+  //core.io.imem.request.bits.data := DontCare
   core.io.imem.response.valid := DontCare
   core.io.imem.response.bits.data := DontCare
-  //core.io.imem <> scratchPadMemory.io.core_ports(0)
+  core.io.imem <> scratchPadMemory.io.core_ports(IPORT)
 
   switch (state) {
     is (s_idle) {
@@ -147,9 +146,6 @@ class BorgModuleImp(outer: Borg) extends LazyModuleImp(outer) {
             mem.d.ready := true.B
           }
         }
-        //scratchPadMemory.memory(memoryIndex) := mem.d.bits.data
-        //scratchPadMemory.memory(memoryIndex+1.U) := mem.d.bits.data >> 32
-        //memoryIndex := memoryIndex + 2.U
       }
       when (dValidSeen === true.B && mem.d.valid === false.B) {
         dValidSeen := false.B
@@ -159,6 +155,11 @@ class BorgModuleImp(outer: Borg) extends LazyModuleImp(outer) {
     is (s_shader) {
       mem.a.valid := false.B
       mem.d.ready := false.B
+
+      // Do something
+      val lastShader = RegNext(state)
+      core.io.reset := Mux(lastShader === s_response, true.B, false.B)
+
       completed := true.B
       state := s_idle
 
