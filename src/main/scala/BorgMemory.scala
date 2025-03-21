@@ -52,7 +52,7 @@ class AsyncScratchPadMemory(num_core_ports: Int, instructionSize: Int, instructi
 
   val memory = Mem(instructionSize, UInt(instructionWidth.W))
 
-  for ( i <- 0 to 1) { printf(cf"Borg memory $i: 0b${memory(i)}%b\n") }
+  //for ( i <- 0 to 1) { printf(cf"Borg memory $i: 0b${memory(i)}%b\n") }
 
   when (io.core_ports(IPORT).request.valid) {
     io.core_ports(IPORT).response.valid := RegNext(io.core_ports(IPORT).request.valid)
