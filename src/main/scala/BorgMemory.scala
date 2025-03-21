@@ -7,6 +7,11 @@ import chisel3._
 import chisel3.util._
 import scala.language.reflectiveCalls
 
+trait RISCVConstants {
+  // The Bubble Instruction (Machine generated NOP)
+  val BUBBLE  = 0x4033.U(32.W)
+}
+
 trait MemoryOpConstants {
   val DPORT = 0
   val IPORT = 1
@@ -16,7 +21,7 @@ trait MemoryOpConstants {
   val M_XWRITE= "b1".asUInt(1.W)
 }
 
-object Constants extends MemoryOpConstants {}
+object Constants extends RISCVConstants with MemoryOpConstants {}
 
 import Constants._
 

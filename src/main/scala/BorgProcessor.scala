@@ -97,15 +97,17 @@ class BorgDataPath() extends Module
 
   val programCounter = RegInit(0.U(32.W))
   programCounter := Mux(io.reset, 0.U, programCounter + 1.U)
+  printf(cf"Borg program counter: $programCounter\n")
+
   io.imem.request.bits.address := programCounter
   io.imem.request.bits.function:= M_XREAD
   io.imem.request.bits.data := DontCare
   io.imem.request.valid := true.B
-  printf(cf"Borg program counter: $programCounter\n")
+
+  val instruction = Mux(io.imem.response.valid, io.imem.response.bits.data, BUBBLE)
+  printf(cf"Borg instruction: 0x$instruction%x\n")
 
 //  val regfile = Mem(32, UInt(conf.xprlen.W))
-//
-//  val inst = io.imem.resp.bits.data
 //
 //  val rs1_addr = inst(RS1_MSB, RS1_LSB)
 //
