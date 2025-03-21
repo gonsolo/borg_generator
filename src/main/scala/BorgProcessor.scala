@@ -103,6 +103,7 @@ class BorgDataPath() extends Module
   io.imem.request.bits.function:= M_XREAD
   io.imem.request.bits.data := DontCare
   io.imem.request.valid := true.B
+  io.imem.request.ready := DontCare
 
   val instruction = Mux(io.imem.response.valid, io.imem.response.bits.data, BUBBLE)
   printf(cf"Borg instruction: 0x$instruction%x\n")
