@@ -6,6 +6,7 @@ package borg
 import chisel3._
 import chisel3.util._
 import org.chipsalliance.cde.config.{Parameters}
+import org.chipsalliance.diplomacy.lazymodule.{LazyModule, LazyModuleImp}
 
 import Constants._
 
@@ -157,6 +158,8 @@ class BorgCore(implicit val p: Parameters) extends Module
 //  //io := DontCare
   val c  = Module(new BorgControlPath())
   val d  = Module(new BorgDataPath())
+
+  val instructionCache = LazyModule(new TrivialInstructionCache)
 
 //  io.imem.resp.valid := DontCare
 //  io.imem.resp.bits := DontCare

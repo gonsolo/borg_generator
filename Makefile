@@ -1,6 +1,6 @@
 e: edit
 edit:
-	vi src/main/scala/Borg.scala src/test/scala/BorgTest.scala
+	vi src/main/scala/Borg.scala src/main/scala/BorgMemory.scala src/test/scala/BorgTest.scala
 c: compile
 compile:
 	sbt compile

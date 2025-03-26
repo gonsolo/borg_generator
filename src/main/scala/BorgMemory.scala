@@ -5,6 +5,10 @@ package borg
 
 import chisel3._
 import chisel3.util._
+import freechips.rocketchip.diplomacy.{IdRange}
+import freechips.rocketchip.tilelink.{TLClientNode, TLMasterParameters, TLMasterPortParameters}
+import org.chipsalliance.cde.config.{Parameters, Field, Config}
+import org.chipsalliance.diplomacy.lazymodule.{LazyModule, LazyModuleImp}
 import scala.language.reflectiveCalls
 
 trait RISCVConstants {
@@ -72,3 +76,39 @@ class AsyncScratchPadMemory(num_core_ports: Int, instructionSize: Int, instructi
   }
 }
 
+class TrivialInstructionCacheRequest extends Bundle
+{
+  val addr = UInt(32.W)
+}
+
+class TrivialInstructionCacheResponse extends Bundle
+{
+  val data = UInt(32.W)
+}
+
+class TrivialInstructionCacheBundle extends Bundle
+{
+  val request = Flipped(Decoupled(new TrivialInstructionCacheRequest))
+  val response = Valid(new TrivialInstructionCacheResponse)
+}
+
+class TrivialInstructionCacheModule(outer: TrivialInstructionCache) extends LazyModuleImp(outer)
+{
+  // TileLink port to memory.
+  val (tl_out, edge_out) = outer.masterNode.out(0)
+
+  // IO between Core and ICache.
+  val io = IO(new TrivialInstructionCacheBundle)
+
+  // TODO
+}
+
+class TrivialInstructionCache(implicit p: Parameters) extends LazyModule
+{
+  lazy val module = new TrivialInstructionCacheModule(this)
+
+  // Connection to main memory.
+  val masterNode = TLClientNode(Seq(TLMasterPortParameters.v1(Seq(TLMasterParameters.v1(
+    name = "Borg Instruction Cache",
+    sourceId = IdRange(0, 1))))))
+}
