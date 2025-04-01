@@ -159,8 +159,9 @@ class BorgCore(implicit val p: Parameters) extends Module
   val c  = Module(new BorgControlPath())
   val d  = Module(new BorgDataPath())
 
-  val instructionCache = LazyModule(new TrivialInstructionCache)
-
+  lazy val instructionCache = new TrivialInstructionCache
+  val icache = instructionCache.module
+  icache.io.request := io.imem.request
 //  io.imem.resp.valid := DontCare
 //  io.imem.resp.bits := DontCare
 //  io.debug_out := d.io.debug_out

@@ -78,7 +78,7 @@ class AsyncScratchPadMemory(num_core_ports: Int, instructionSize: Int, instructi
 
 class TrivialInstructionCacheRequest extends Bundle
 {
-  val addr = UInt(32.W)
+  val address = UInt(32.W)
 }
 
 class TrivialInstructionCacheResponse extends Bundle
@@ -95,12 +95,46 @@ class TrivialInstructionCacheBundle extends Bundle
 class TrivialInstructionCacheModule(outer: TrivialInstructionCache) extends LazyModuleImp(outer)
 {
   // TileLink port to memory.
-  val (tl_out, edge_out) = outer.masterNode.out(0)
+  val (mem, edge) = outer.masterNode.out(0)
 
   // IO between Core and ICache.
   val io = IO(new TrivialInstructionCacheBundle)
 
-  // TODO
+  val s_idle :: s_request :: s_response :: Nil = Enum(3)
+  val state = RegInit(s_idle)
+
+  val addressBits = edge.bundle.addressBits
+  val address = Reg(UInt(addressBits.W))
+
+  switch (state) {
+    is (s_idle) {
+      mem.a.valid := false.B
+      mem.d.ready := false.B
+      io.request.ready := true.B
+      when (io.request.valid === true.B) {
+        state := s_request
+        address := io.request.bits.address
+      }
+    }
+    is (s_request) {
+      mem.a.valid := true.B
+      mem.d.ready := false.B
+      when (edge.done(mem.a)) {
+        state := s_response
+      }
+    }
+    is (s_response) {
+      mem.a.valid := false.B
+      mem.d.ready := true.B
+      when (mem.d.valid === true.B) {
+        io.response.bits.data := mem.d.bits.data
+        io.response.valid := true.B
+      }
+      when (mem.d.valid === false.B) {
+        state := s_idle
+      }
+    }
+  }
 }
 
 class TrivialInstructionCache(implicit p: Parameters) extends LazyModule
