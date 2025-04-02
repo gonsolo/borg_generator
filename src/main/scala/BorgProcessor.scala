@@ -168,17 +168,17 @@ class BorgCoreModule(outer: BorgCore) extends LazyModuleImp(outer)
 //  io.debug_out := d.io.debug_out
 //
 //  d.io.imem.resp := DontCare
+////
+////  // Connect the control unit to the data path unit
+////  // For example the control unit decodes an instruction and informs the data path unit
+////  // about the alu function
+////  c.io.ctl <> d.io.ctl
+////  c.io.dat <> d.io.dat
 //
-//  // Connect the control unit to the data path unit
-//  // For example the control unit decodes an instruction and informs the data path unit
-//  // about the alu function
-//  c.io.ctl <> d.io.ctl
-//  c.io.dat <> d.io.dat
-
-  io.imem <> d.io.imem
-  io.reset <> d.io.reset
-
-//  d.io.reset_vector := io.reset_vector
+//  io.imem <> d.io.imem
+//  io.reset <> d.io.reset
+//
+////  d.io.reset_vector := io.reset_vector
 }
 
 class BorgCore()(implicit p: Parameters) extends LazyModule

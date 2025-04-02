@@ -68,13 +68,13 @@ class BorgModuleImp(outer: Borg) extends LazyModuleImp(outer) {
   val core = LazyModule(new BorgCore())
   //core.io := DontCare
 
-  switch (state) {
-    is (s_idle) {
-      printf(cf"BorgModuleImp idle\n")
-      core.module.io.reset := kick
-      core.module.io.startAddress := shaderBase
-    }
-  }
+  //switch (state) {
+  //  is (s_idle) {
+  //    printf(cf"BorgModuleImp idle\n")
+  //    core.module.io.reset := kick
+  //    core.module.io.startAddress := shaderBase
+  //  }
+  //}
 
   outer.registerNode.regmap(
     0x000 -> Seq(RegField.r(32, test1)),
