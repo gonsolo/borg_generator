@@ -44,61 +44,13 @@ class MemoryPortIo() extends Bundle {
   val response   = Flipped(new ValidIO(new MemoryResponse()))
 }
 
-class AsyncScratchPadMemory(num_core_ports: Int, instructionSize: Int, instructionWidth: Int) extends Module
-{
-  val io = IO(new Bundle {
-    val core_ports = Vec(num_core_ports, Flipped(new MemoryPortIo()))
-  })
-
-  for (port <- io.core_ports) {
-    port.request.ready := DontCare
-    port.request.valid := DontCare
-    port.request.bits.function := DontCare
-    port.request.bits.data := DontCare
-    port.response.valid := DontCare
-    port.response.bits.data := DontCare
-  }
-
-  val memory = Mem(instructionSize, UInt(instructionWidth.W))
-
-  //for ( i <- 0 to 1) { printf(cf"Borg memory $i: 0b${memory(i)}%b\n") }
-
-  when (io.core_ports(IPORT).request.valid) {
-    io.core_ports(IPORT).response.valid := RegNext(io.core_ports(IPORT).request.valid)
-    switch (io.core_ports(IPORT).request.bits.function) {
-      is (M_XREAD) {
-        io.core_ports(IPORT).response.bits.data := memory(io.core_ports(IPORT).request.bits.address)
-      }
-      is (M_XWRITE) {
-        memory(io.core_ports(IPORT).request.bits.address) := io.core_ports(IPORT).request.bits.data
-      }
-    }
-  }
-}
-
-class TrivialInstructionCacheRequest extends Bundle
-{
-  val address = UInt(32.W)
-}
-
-class TrivialInstructionCacheResponse extends Bundle
-{
-  val data = UInt(32.W)
-}
-
-class TrivialInstructionCacheBundle extends Bundle
-{
-  val request = Flipped(Decoupled(new TrivialInstructionCacheRequest))
-  val response = Valid(new TrivialInstructionCacheResponse)
-}
-
 class TrivialInstructionCacheModule(outer: TrivialInstructionCache) extends LazyModuleImp(outer)
 {
   // TileLink port to memory.
   val (mem, edge) = outer.masterNode.out(0)
 
   // IO between Core and ICache.
-  val io = IO(new TrivialInstructionCacheBundle)
+  val io = IO(new MemoryPortIo)
 
   val s_idle :: s_request :: s_response :: Nil = Enum(3)
   val state = RegInit(s_idle)
@@ -106,17 +58,22 @@ class TrivialInstructionCacheModule(outer: TrivialInstructionCache) extends Lazy
   val addressBits = edge.bundle.addressBits
   val address = Reg(UInt(addressBits.W))
 
+  // ignore io.request.function for now
+  // ingore io.request.data for now
   switch (state) {
     is (s_idle) {
+      printf(cf"Borg icache idle\n")
       mem.a.valid := false.B
       mem.d.ready := false.B
       io.request.ready := true.B
       when (io.request.valid === true.B) {
+        require(io.request.bits.function == M_XREAD)
         state := s_request
         address := io.request.bits.address
       }
     }
     is (s_request) {
+      printf(cf"Borg icache request\n")
       mem.a.valid := true.B
       mem.d.ready := false.B
       when (edge.done(mem.a)) {
@@ -124,6 +81,7 @@ class TrivialInstructionCacheModule(outer: TrivialInstructionCache) extends Lazy
       }
     }
     is (s_response) {
+      printf(cf"Borg icache response\n")
       mem.a.valid := false.B
       mem.d.ready := true.B
       when (mem.d.valid === true.B) {

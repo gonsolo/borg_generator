@@ -14,6 +14,7 @@ class BorgCoreIo() extends Bundle
 {
   val imem = new MemoryPortIo()
   val reset = Input(Bool())
+  val startAddress = Input(UInt(32.W))
 }
 //
 //case class BorgCoreParams(
@@ -82,6 +83,7 @@ class BorgDataPathIo() extends Bundle()
 //  val dat = new DatToCtlIo()
   val imem = new MemoryPortIo()
   val reset = Input(Bool())
+  val startAddress = Input(UInt(32.W))
 }
 //
 //trait RISCVConstants {
@@ -94,14 +96,13 @@ class BorgDataPathIo() extends Bundle()
 class BorgDataPath() extends Module
 {
   val io = IO(new BorgDataPathIo())
-  //io := DontCare
 
   val programCounter = RegInit(0.U(32.W))
-  programCounter := Mux(io.reset, 0.U, programCounter + 1.U)
+  programCounter := Mux(io.reset, io.startAddress, programCounter + 4.U)
   printf(cf"Borg program counter: $programCounter\n")
 
   io.imem.request.bits.address := programCounter
-  io.imem.request.bits.function:= M_XREAD
+  io.imem.request.bits.function := M_XREAD
   io.imem.request.bits.data := DontCare
   io.imem.request.valid := true.B
   io.imem.request.ready := DontCare
@@ -152,16 +153,16 @@ class BorgDataPath() extends Module
 //  io.dat.inst := inst
 }
 
-class BorgCore(implicit val p: Parameters) extends Module
+class BorgCoreModule(outer: BorgCore) extends LazyModuleImp(outer)
 {
   val io = IO(new BorgCoreIo())
 //  //io := DontCare
   val c  = Module(new BorgControlPath())
   val d  = Module(new BorgDataPath())
 
-  lazy val instructionCache = new TrivialInstructionCache
-  val icache = instructionCache.module
-  icache.io.request := io.imem.request
+  val instructionCache = LazyModule(new TrivialInstructionCache())
+  //val icache = instructionCache.module
+  instructionCache.module.io.request := io.imem.request
 //  io.imem.resp.valid := DontCare
 //  io.imem.resp.bits := DontCare
 //  io.debug_out := d.io.debug_out
@@ -179,3 +180,9 @@ class BorgCore(implicit val p: Parameters) extends Module
 
 //  d.io.reset_vector := io.reset_vector
 }
+
+class BorgCore()(implicit p: Parameters) extends LazyModule
+{
+  lazy val module = new BorgCoreModule(this)
+}
+
