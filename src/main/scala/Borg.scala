@@ -68,6 +68,8 @@ class BorgModuleImp(outer: Borg) extends LazyModuleImp(outer) {
   val core = LazyModule(new BorgCore())
   //core.io := DontCare
 
+  printf(cf"BorgModuleImp step\n")
+
   //switch (state) {
   //  is (s_idle) {
   //    printf(cf"BorgModuleImp idle\n")
