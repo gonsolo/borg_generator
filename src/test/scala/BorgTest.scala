@@ -22,12 +22,14 @@ class SocIo extends Bundle {
 class SocModuleImp(_outer: Soc) extends LazyModuleImp(_outer) {
 
   val io = IO(new SocIo)
-  io.x := true.B
+  //io.x := true.B
 
   val parameters = new PeripheryBusParams(8, 8)
   val pbus = LazyModule(new PeripheryBus(parameters, "pbus"))
   val borg = pbus { LazyModule(new Borg(pbus.beatBytes)(p)) }
-  pbus.coupleTo("borg-borg") { borg.registerNode := TLFragmenter(pbus.beatBytes, pbus.blockBytes) := _ }
+  io.x := borg.module.io.x
+
+  //pbus.coupleTo("borg-borg") { borg.registerNode := TLFragmenter(pbus.beatBytes, pbus.blockBytes) := _ }
   printf(cf"SocModuleImp step\n")
 }
 

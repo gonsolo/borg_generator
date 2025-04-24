@@ -24,14 +24,21 @@ class Borg(beatBytes: Int)(implicit p: Parameters) extends LazyModule {
   val regAddress: BigInt = 0x4000
   val regSize: BigInt = 0x0FFF
 
-  val device = new SimpleDevice("borg-device", Seq("borg,borg-1"))
-  val registerNode = TLRegisterNode(Seq(AddressSet(regAddress, regSize)), device, "reg/control", beatBytes=beatBytes)
-  val dmaNode = TLClientNode(Seq(TLMasterPortParameters.v1(Seq(TLMasterParameters.v1(name = "borg-dma", sourceId = IdRange(0, 1))))))
+  //val device = new SimpleDevice("borg-device", Seq("borg,borg-1"))
+  //val registerNode = TLRegisterNode(Seq(AddressSet(regAddress, regSize)), device, "reg/control", beatBytes=beatBytes)
+  //val dmaNode = TLClientNode(Seq(TLMasterPortParameters.v1(Seq(TLMasterParameters.v1(name = "borg-dma", sourceId = IdRange(0, 1))))))
 
-  lazy val module = new BorgModuleImp(this)
+  lazy val module = Module(new BorgModuleImp(this))
+}
+
+class BorgIo extends Bundle {
+  val x = Bool()
 }
 
 class BorgModuleImp(outer: Borg) extends LazyModuleImp(outer) {
+
+  val io = IO(new BorgIo)
+  io.x := true.B
 
   val blockBytes = p(CacheBlockBytes)
   require(blockBytes == 64)
@@ -46,8 +53,8 @@ class BorgModuleImp(outer: Borg) extends LazyModuleImp(outer) {
   val shaderBase = RegInit(0.U(64.W))
   val shaderSize = RegInit(0.U(32.W))
 
-  val (mem, edge) = outer.dmaNode.out(0)
-  val addressBits = edge.bundle.addressBits
+  //val (mem, edge) = outer.dmaNode.out(0)
+  //val addressBits = edge.bundle.addressBits
 
   val dmaSize = 16 * 64 // 1024 bytes
   val instructionSize = dmaSize / 4 // instructions are 32 bit wide
@@ -78,13 +85,13 @@ class BorgModuleImp(outer: Borg) extends LazyModuleImp(outer) {
   //  }
   //}
 
-  outer.registerNode.regmap(
-    0x000 -> Seq(RegField.r(32, test1)),
-    0x020 -> Seq(RegField.w(32, kick)),
-    0x040 -> Seq(RegField.r(32, completed)),
-    0x060 -> Seq(RegField.w(64, shaderBase)),
-    0x100 -> Seq(RegField.w(32, shaderSize)),
-  )
+  //outer.registerNode.regmap(
+  //  0x000 -> Seq(RegField.r(32, test1)),
+  //  0x020 -> Seq(RegField.w(32, kick)),
+  //  0x040 -> Seq(RegField.r(32, completed)),
+  //  0x060 -> Seq(RegField.w(64, shaderBase)),
+  //  0x100 -> Seq(RegField.w(32, shaderSize)),
+  //)
 }
 
 trait CanHavePeripheryBorg { this: BaseSubsystem =>
@@ -93,9 +100,9 @@ trait CanHavePeripheryBorg { this: BaseSubsystem =>
   p(BorgKey) .map { k =>
     val pbus = locateTLBusWrapper(PBUS)
     val borg = pbus { LazyModule(new Borg(pbus.beatBytes)(p)) }
-    pbus.coupleTo("borg-borg") { borg.registerNode := TLFragmenter(pbus.beatBytes, pbus.blockBytes) := _ }
+    //pbus.coupleTo("borg-borg") { borg.registerNode := TLFragmenter(pbus.beatBytes, pbus.blockBytes) := _ }
     val fbus = locateTLBusWrapper(FBUS)
-    fbus.coupleFrom("borg-dma") { _ := borg.dmaNode }
+    //fbus.coupleFrom("borg-dma") { _ := borg.dmaNode }
   }
 }
 
