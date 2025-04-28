@@ -5,11 +5,11 @@ package borg
 
 import chisel3._
 import chisel3.util.{Cat, Enum, is, log2Ceil, switch}
-import freechips.rocketchip.diplomacy.{AddressSet, IdRange}
+import freechips.rocketchip.diplomacy.{AddressSet, IdRange, TransferSizes}
 import freechips.rocketchip.subsystem.{BaseSubsystem, CacheBlockBytes, FBUS, PBUS}
 import freechips.rocketchip.regmapper.{RegField}
 import freechips.rocketchip.resources.{SimpleDevice}
-import freechips.rocketchip.tilelink.{TLClientNode, TLFragmenter, TLMasterParameters, TLMasterPortParameters, TLRegisterNode}
+import freechips.rocketchip.tilelink._
 import org.chipsalliance.cde.config.{Parameters, Field, Config}
 import org.chipsalliance.diplomacy.lazymodule.{LazyModule, LazyModuleImp}
 import scala.language.reflectiveCalls
@@ -24,11 +24,11 @@ class Borg(beatBytes: Int)(implicit p: Parameters) extends LazyModule {
   val regAddress: BigInt = 0x4000
   val regSize: BigInt = 0x0FFF
 
-  //val device = new SimpleDevice("borg-device", Seq("borg,borg-1"))
-  //val registerNode = TLRegisterNode(Seq(AddressSet(regAddress, regSize)), device, "reg/control", beatBytes=beatBytes)
+  val device = new SimpleDevice("borg-device", Seq("borg,borg-1"))
+  val registerNode = TLRegisterNode(Seq(AddressSet(regAddress, regSize)), device, "reg/control", beatBytes=beatBytes)
   //val dmaNode = TLClientNode(Seq(TLMasterPortParameters.v1(Seq(TLMasterParameters.v1(name = "borg-dma", sourceId = IdRange(0, 1))))))
 
-  lazy val module = Module(new BorgModuleImp(this))
+  lazy val module = new BorgModuleImp(this)
 }
 
 class BorgIo extends Bundle {
@@ -109,3 +109,108 @@ trait CanHavePeripheryBorg { this: BaseSubsystem =>
 class WithBorg() extends Config((site, here, up) => {
   case BorgKey => Some(BorgConfig())
 })
+
+class SimpleRequesterLM(implicit p: Parameters) extends LazyModule {
+  val node = TLClientNode(Seq(TLMasterPortParameters.v1(
+    clients = Seq(TLMasterParameters.v1(
+      name = "SimpleRequester",
+      sourceId = IdRange(0, 1)
+    ))
+  )))
+
+  lazy val module = new Impl
+  class Impl extends LazyModuleImp(this) {
+    val io = IO(new Bundle {
+      val start = Input(Bool())
+      val result = Output(UInt(32.W))
+      val done = Output(Bool())
+    })
+
+    val (out, edge) = node.out(0)
+
+    val (sIdle :: sSend :: sWait :: sDone :: Nil) = Enum(4)
+    val state = RegInit(sIdle)
+
+    val sourceId = 0.U
+    val addr = 0x10.U(32.W)
+
+    out.a.valid := (state === sSend)
+    out.a.bits := edge.Get(
+      fromSource = sourceId,
+      toAddress = addr,
+      lgSize = 2.U // 4 bytes
+    )._2
+
+       out.d.ready := (state === sWait)
+
+    val resultReg = RegInit(0.U(32.W))
+    io.result := resultReg
+    io.done := (state === sDone)
+
+    switch(state) {
+      is(sIdle) {
+        printf(cf"Lazy requester idle\n")
+        when(io.start) { state := sSend }
+      }
+      is(sSend) {
+        printf(cf"Lazy requester send\n")
+        when(out.a.ready) { state := sWait }
+      }
+      is(sWait) {
+        printf(cf"Lazy requester wait\n")
+        when(out.d.valid) {
+          resultReg := out.d.bits.data
+          state := sDone
+        }
+      }
+      is(sDone) {
+        printf(cf"Lazy requester done\n")
+      }
+    }
+  }
+}
+
+class SimpleResponderLM(implicit p: Parameters) extends LazyModule {
+  val node = TLManagerNode(Seq(TLSlavePortParameters.v1(
+    managers = Seq(TLSlaveParameters.v1(
+      address = Seq(AddressSet(0x0, 0xFFF)), // 4KB memory
+      supportsGet = TransferSizes(1, 4),
+      supportsPutFull = TransferSizes(1, 4)
+    )),
+    beatBytes = 4
+  )))
+
+  lazy val module = new LazyModuleImp(this) {
+    val (in, edge) = node.in(0)
+
+    in.a.ready := true.B
+    in.d.valid := RegNext(in.a.valid)
+
+    val beatBytes = 4
+
+    val dataResp = in.a.bits.address * 2.U
+
+    printf(cf"Lazy responder\n")
+    in.d.bits := edge.AccessAck(in.a.bits, dataResp)
+  }
+}
+
+class TestTop(implicit p: Parameters) extends LazyModule {
+  val requester = LazyModule(new SimpleRequesterLM)
+  val responder = LazyModule(new SimpleResponderLM)
+
+  responder.node := requester.node // diplomatic connection
+
+  lazy val module = Module(new Impl)
+  class Impl extends LazyModuleImp(this) {
+    val io = IO(new Bundle {
+      val start = Input(Bool())
+      val result = Output(UInt(32.W))
+      val done = Output(Bool())
+    })
+
+    requester.module.io.start := io.start
+    io.result := requester.module.io.result
+    io.done := requester.module.io.done
+  }
+}
