@@ -2,6 +2,9 @@ ThisBuild / scalaVersion     := "2.13.16"
 ThisBuild / version          := "0.1"
 ThisBuild / organization     := "org.gonsolo"
 
+// Parallel execution of tests doesn't work with LazyModules
+Test / parallelExecution := false
+
 val chisel6Version = "6.7.0"
 
 lazy val root = (project in file("."))
@@ -16,6 +19,7 @@ lazy val root = (project in file("."))
       "-unchecked",
       "-deprecation",
       "-feature",
+      "-language:reflectiveCalls",
     ),
     addCompilerPlugin("org.chipsalliance" % "chisel-plugin" % chisel6Version cross CrossVersion.full),
     resolvers ++= Resolver.sonatypeOssRepos("snapshots"),
