@@ -1,3 +1,10 @@
+// Copyright Andreas Wendleder 2025
+// CERN-OHL-S-2.0
+
+// This test demonstrates how to drive a register via TileLink messages.
+// This way registers can be tested without resorting to FPGA-accelerated 
+// full system simulation with  FireSim.
+
 package borg
 
 import chisel3._

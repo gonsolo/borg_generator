@@ -1,5 +1,5 @@
 // Copyright Andreas Wendleder 2025
-// GPL-3.0-only
+// CERN-OHL-S-2.0
 
 package borg
 
