@@ -85,13 +85,13 @@ class BorgModuleImp(outer: Borg) extends LazyModuleImp(outer) {
   //  }
   //}
 
-  //outer.registerNode.regmap(
-  //  0x000 -> Seq(RegField.r(32, test1)),
-  //  0x020 -> Seq(RegField.w(32, kick)),
-  //  0x040 -> Seq(RegField.r(32, completed)),
-  //  0x060 -> Seq(RegField.w(64, shaderBase)),
-  //  0x100 -> Seq(RegField.w(32, shaderSize)),
-  //)
+  outer.registerNode.regmap(
+    0x000 -> Seq(RegField.r(32, test1)),
+    0x020 -> Seq(RegField.w(32, kick)),
+    0x040 -> Seq(RegField.r(32, completed)),
+    0x060 -> Seq(RegField.w(64, shaderBase)),
+    0x100 -> Seq(RegField.w(32, shaderSize)),
+  )
 }
 
 trait CanHavePeripheryBorg { this: BaseSubsystem =>

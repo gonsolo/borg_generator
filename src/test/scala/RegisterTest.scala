@@ -23,7 +23,7 @@ import freechips.rocketchip.tilelink.{
   TLMessages,
   TLRegisterNode
 }
-import org.chipsalliance.cde.config.{Parameters}
+import org.chipsalliance.cde.config.Parameters
 import org.chipsalliance.diplomacy.lazymodule.{
   LazyModule,
   LazyModuleImp
