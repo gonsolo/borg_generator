@@ -189,7 +189,7 @@ class BorgKickTest extends AnyFlatSpec {
   it should "do something" in {
     implicit val p: Parameters = Parameters.empty
     simulate(new BorgKickTester()) { tester =>
-      tester.clock.step(20)
+      tester.clock.step(13)
       tester.io.success.expect(true.B)
     }
   }
