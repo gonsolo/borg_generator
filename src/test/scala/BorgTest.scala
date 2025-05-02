@@ -68,7 +68,7 @@ class BorgHarness(implicit p: Parameters) extends LazyModule {
     )
   )
 
-  dut.registerNode := TLFragmenter(4, 64) := driverNode
+  dut.registerNode := TLFragmenter(8, 64) := driverNode
 
   lazy val module = Module(new Imp)
   class Imp extends LazyModuleImp(this) {
@@ -78,14 +78,18 @@ class BorgHarness(implicit p: Parameters) extends LazyModule {
     out.a <> driver.io.tl.a
     out.d <> driver.io.tl.d
 
-    val io = IO(new RegisterIO)
+    val io = IO(new BorgIO)
     io.success := driver.io.success
   }
 }
 
+class BorgIO extends Bundle {
+  val success = Output(Bool())
+}
+
 class BorgTester(implicit p: Parameters) extends Module {
-  val harness = LazyModule(new RegisterHarness())
-  val io = IO(new RegisterIO)
+  val harness = LazyModule(new BorgHarness())
+  val io = IO(new BorgIO)
   io.success := harness.module.io.success
 }
 
@@ -94,7 +98,7 @@ class BorgTest extends AnyFlatSpec {
   it should "do something" in {
     implicit val p: Parameters = Parameters.empty
     simulate(new BorgTester()) { tester =>
-      tester.clock.step(5)
+      tester.clock.step(3)
       tester.io.success.expect(true.B)
     }
   }

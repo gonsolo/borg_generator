@@ -26,7 +26,7 @@ class Borg(beatBytes: Int)(implicit p: Parameters) extends LazyModule {
 
   val device = new SimpleDevice("borg-device", Seq("borg,borg-1"))
   val registerNode = TLRegisterNode(Seq(AddressSet(regAddress, regSize)), device, "reg/control", beatBytes=beatBytes)
-  //val dmaNode = TLClientNode(Seq(TLMasterPortParameters.v1(Seq(TLMasterParameters.v1(name = "borg-dma", sourceId = IdRange(0, 1))))))
+  val dmaNode = TLClientNode(Seq(TLMasterPortParameters.v1(Seq(TLMasterParameters.v1(name = "borg-dma", sourceId = IdRange(0, 1))))))
 
   lazy val module = new BorgModuleImp(this)
 }
@@ -100,9 +100,9 @@ trait CanHavePeripheryBorg { this: BaseSubsystem =>
   p(BorgKey) .map { k =>
     val pbus = locateTLBusWrapper(PBUS)
     val borg = pbus { LazyModule(new Borg(pbus.beatBytes)(p)) }
-    //pbus.coupleTo("borg-borg") { borg.registerNode := TLFragmenter(pbus.beatBytes, pbus.blockBytes) := _ }
+    pbus.coupleTo("borg-borg") { borg.registerNode := TLFragmenter(pbus.beatBytes, pbus.blockBytes) := _ }
     val fbus = locateTLBusWrapper(FBUS)
-    //fbus.coupleFrom("borg-dma") { _ := borg.dmaNode }
+    fbus.coupleFrom("borg-dma") { _ := borg.dmaNode }
   }
 }
 
