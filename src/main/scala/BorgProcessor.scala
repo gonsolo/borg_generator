@@ -97,6 +97,8 @@ class BorgDataPath() extends Module
 {
   val io = IO(new BorgDataPathIo())
 
+  printf("BorgDataPath")
+
   val programCounter = RegInit(0.U(32.W))
   programCounter := Mux(io.reset, io.startAddress, programCounter + 4.U)
   printf(cf"Borg program counter: $programCounter\n")
@@ -156,13 +158,17 @@ class BorgDataPath() extends Module
 class BorgCoreModule(outer: BorgCore) extends LazyModuleImp(outer)
 {
   val io = IO(new BorgCoreIo())
-//  //io := DontCare
+  io := DontCare
   val c  = Module(new BorgControlPath())
   val d  = Module(new BorgDataPath())
 
-  val instructionCache = LazyModule(new TrivialInstructionCache())
   //val icache = instructionCache.module
-  instructionCache.module.io.request := io.imem.request
+  val instructionCache = outer.instructionCache.module
+
+  instructionCache.io := DontCare
+  d.io := DontCare
+
+  //instructionCache.io.request := io.imem.request
 //  io.imem.resp.valid := DontCare
 //  io.imem.resp.bits := DontCare
 //  io.debug_out := d.io.debug_out
@@ -184,5 +190,6 @@ class BorgCoreModule(outer: BorgCore) extends LazyModuleImp(outer)
 class BorgCore()(implicit p: Parameters) extends LazyModule
 {
   lazy val module = new BorgCoreModule(this)
+  val instructionCache = LazyModule(new TrivialInstructionCache())
 }
 

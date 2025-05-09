@@ -29,6 +29,7 @@ class Borg(beatBytes: Int)(implicit p: Parameters) extends LazyModule {
   val dmaNode = TLClientNode(Seq(TLMasterPortParameters.v1(Seq(TLMasterParameters.v1(name = "borg-dma", sourceId = IdRange(0, 1))))))
 
   lazy val module = new BorgModuleImp(this)
+  val core = LazyModule(new BorgCore())
 }
 
 class BorgIo extends Bundle {
@@ -46,6 +47,7 @@ class BorgModuleImp(outer: Borg) extends LazyModuleImp(outer) {
   // The first register to test
   val sixSixSix = RegInit(666.U(32.W))
 
+  // Writing 1 to kick starts the machinery
   val kick = RegInit(0.U(32.W))
   val completed = RegInit(false.B)
   when (kick === 1.U) {
@@ -74,8 +76,10 @@ class BorgModuleImp(outer: Borg) extends LazyModuleImp(outer) {
   //val address = Reg(UInt(addressBits.W))
   //val size = log2Ceil(blockBytes).U
 
-  val core = LazyModule(new BorgCore())
-  //core.io := DontCare
+  val borgResult = RegInit(0.U(32.W))
+  val core = outer.core.module
+  core.io := DontCare
+  borgResult := core.io.imem.response.bits.data
 
   val counter = RegInit(0.U(32.W))
 

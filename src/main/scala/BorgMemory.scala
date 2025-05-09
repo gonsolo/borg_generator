@@ -51,6 +51,7 @@ class TrivialInstructionCacheModule(outer: TrivialInstructionCache) extends Lazy
 
   // IO between Core and ICache.
   val io = IO(new MemoryPortIo)
+  io := DontCare
 
   val s_idle :: s_request :: s_response :: Nil = Enum(3)
   val state = RegInit(s_idle)
@@ -58,41 +59,42 @@ class TrivialInstructionCacheModule(outer: TrivialInstructionCache) extends Lazy
   val addressBits = edge.bundle.addressBits
   val address = Reg(UInt(addressBits.W))
 
+  io := DontCare
   // ignore io.request.function for now
   // ingore io.request.data for now
-  switch (state) {
-    is (s_idle) {
-      printf(cf"Borg icache idle\n")
-      mem.a.valid := false.B
-      mem.d.ready := false.B
-      io.request.ready := true.B
-      when (io.request.valid === true.B) {
-        require(io.request.bits.function == M_XREAD)
-        state := s_request
-        address := io.request.bits.address
-      }
-    }
-    is (s_request) {
-      printf(cf"Borg icache request\n")
-      mem.a.valid := true.B
-      mem.d.ready := false.B
-      when (edge.done(mem.a)) {
-        state := s_response
-      }
-    }
-    is (s_response) {
-      printf(cf"Borg icache response\n")
-      mem.a.valid := false.B
-      mem.d.ready := true.B
-      when (mem.d.valid === true.B) {
-        io.response.bits.data := mem.d.bits.data
-        io.response.valid := true.B
-      }
-      when (mem.d.valid === false.B) {
-        state := s_idle
-      }
-    }
-  }
+  //switch (state) {
+  //  is (s_idle) {
+  //    printf(cf"Borg icache idle\n")
+  //    mem.a.valid := false.B
+  //    mem.d.ready := false.B
+  //    io.request.ready := true.B
+  //    when (io.request.valid === true.B) {
+  //      require(io.request.bits.function == M_XREAD)
+  //      state := s_request
+  //      address := io.request.bits.address
+  //    }
+  //  }
+  //  is (s_request) {
+  //    printf(cf"Borg icache request\n")
+  //    mem.a.valid := true.B
+  //    mem.d.ready := false.B
+  //    when (edge.done(mem.a)) {
+  //      state := s_response
+  //    }
+  //  }
+  //  is (s_response) {
+  //    printf(cf"Borg icache response\n")
+  //    mem.a.valid := false.B
+  //    mem.d.ready := true.B
+  //    when (mem.d.valid === true.B) {
+  //      io.response.bits.data := mem.d.bits.data
+  //      io.response.valid := true.B
+  //    }
+  //    when (mem.d.valid === false.B) {
+  //      state := s_idle
+  //    }
+  //  }
+  //}
 }
 
 class TrivialInstructionCache(implicit p: Parameters) extends LazyModule
@@ -102,5 +104,6 @@ class TrivialInstructionCache(implicit p: Parameters) extends LazyModule
   // Connection to main memory.
   val masterNode = TLClientNode(Seq(TLMasterPortParameters.v1(Seq(TLMasterParameters.v1(
     name = "Borg Instruction Cache",
-    sourceId = IdRange(0, 1))))))
+    sourceId = IdRange(0, 1)
+    )))))
 }
