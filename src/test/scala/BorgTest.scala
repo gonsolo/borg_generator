@@ -76,6 +76,18 @@ class BorgFirstHarness(implicit p: Parameters) extends LazyModule {
 
   dut.registerNode := TLFragmenter(8, 64) := driverNode
 
+  val instructionCacheDriver = TLManagerNode(Seq(TLSlavePortParameters.v1(
+    managers = Seq(TLSlaveParameters.v1(
+      address = Seq(AddressSet(0x5000, 0xFFF)),
+      supportsGet = TransferSizes(1, 8),
+      supportsPutFull = TransferSizes(1, 8),
+      fifoId = Some(0)
+    )),
+    beatBytes = 8
+  )))
+
+  instructionCacheDriver := TLFragmenter(8, 64) := dut.core.instructionCache.masterNode
+
   lazy val module = Module(new Imp)
   class Imp extends LazyModuleImp(this) {
     val (out, edge) = driverNode.out(0)
@@ -171,17 +183,7 @@ class BorgKickHarness(implicit p: Parameters) extends LazyModule {
 
   dut.registerNode := TLFragmenter(8, 64) := driverNode
 
-  //val driverNode2 = TLClientNode(
-  //  Seq(
-  //    TLMasterPortParameters.v1(Seq(TLMasterParameters.v1(name = "borgDriver2")))
-  //  )
-  //)
-  //val driverNode2 = TLManagerNode(
-  //  Seq(TLSlavePortParameters.v1(
-  //    Seq(TLSlaveParameters.v1(
-  //      Seq(AddressSet(0x4000, 0xf)))),
-  //  8)))
-  val driverNode2 = TLManagerNode(Seq(TLSlavePortParameters.v1(
+  val instructionCacheDriver = TLManagerNode(Seq(TLSlavePortParameters.v1(
     managers = Seq(TLSlaveParameters.v1(
       address = Seq(AddressSet(0x5000, 0xFFF)),
       supportsGet = TransferSizes(1, 8),
@@ -191,9 +193,7 @@ class BorgKickHarness(implicit p: Parameters) extends LazyModule {
     beatBytes = 8
   )))
 
-  driverNode2 := TLFragmenter(8, 64) := dut.core.instructionCache.masterNode
-
-
+  instructionCacheDriver := TLFragmenter(8, 64) := dut.core.instructionCache.masterNode
 
   lazy val module = Module(new Imp)
   class Imp extends LazyModuleImp(this) {
