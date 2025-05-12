@@ -81,7 +81,7 @@ class BorgDataPathIo() extends Bundle()
 {
 //  val ctl = Flipped(new CtlToDatIo())
 //  val dat = new DatToCtlIo()
-  val imem = new MemoryPortIo()
+  val imem = Flipped(new MemoryPortIo())
   val reset = Input(Bool())
   val startAddress = Input(UInt(32.W))
 }
@@ -97,16 +97,15 @@ class BorgDataPath() extends Module
 {
   val io = IO(new BorgDataPathIo())
 
-  printf("BorgDataPath")
-
   val programCounter = RegInit(0.U(32.W))
   programCounter := Mux(io.reset, io.startAddress, programCounter + 4.U)
-  printf(cf"Borg program counter: $programCounter\n")
+  //printf(cf"Borg program counter: $programCounter\n")
 
   io.imem.request.bits.address := programCounter
   io.imem.request.bits.function := M_XREAD
   io.imem.request.bits.data := DontCare
   io.imem.request.valid := true.B
+  printf(cf"BorgDataPath request valid: ${io.imem.request.valid}\n")
   io.imem.request.ready := DontCare
 
   val instruction = Mux(io.imem.response.valid, io.imem.response.bits.data, BUBBLE)
@@ -159,14 +158,27 @@ class BorgCoreModule(outer: BorgCore) extends LazyModuleImp(outer)
 {
   val io = IO(new BorgCoreIo())
   io := DontCare
+
   val c  = Module(new BorgControlPath())
   val d  = Module(new BorgDataPath())
+  d.io.imem.response := DontCare
+  d.io.imem.request.bits := DontCare
+  d.io.imem.request.ready := DontCare
+  d.io.imem.request.bits.address := DontCare
+  d.io.imem.request.bits.data := DontCare
+  d.io.imem.request.bits.function := DontCare
+  d.io.reset := DontCare
+  d.io.startAddress := DontCare
 
-  //val icache = instructionCache.module
   val instructionCache = outer.instructionCache.module
+  instructionCache.io.request.valid := d.io.imem.request.valid 
+  instructionCache.io.response := DontCare
+  instructionCache.io.request.ready := DontCare
+  instructionCache.io.request.bits := DontCare
 
-  instructionCache.io := DontCare
-  d.io := DontCare
+  printf(cf"BorgCoreModule dataPath valid ${d.io.imem.request.valid} cache valid ${instructionCache.io.request.valid}\n")
+  //instructionCache.io := DontCare
+  //d.io := DontCare
 
   //instructionCache.io.request := io.imem.request
 //  io.imem.resp.valid := DontCare
