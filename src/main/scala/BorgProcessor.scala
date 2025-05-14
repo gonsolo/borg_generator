@@ -171,7 +171,7 @@ class BorgCoreModule(outer: BorgCore) extends LazyModuleImp(outer)
   d.io.startAddress := DontCare
 
   val instructionCache = outer.instructionCache.module
-  instructionCache.io.request.valid := d.io.imem.request.valid 
+  instructionCache.io.request <> d.io.imem.request
   instructionCache.io.response := DontCare
   instructionCache.io.request.ready := DontCare
   instructionCache.io.request.bits := DontCare

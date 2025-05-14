@@ -76,7 +76,8 @@ class TrivialInstructionCacheModule(outer: TrivialInstructionCache)
     }
     is (s_request) {
       printf(cf"Borg icache request\n")
-      //    mem.a.valid := true.B
+        //mem.a.valid := true.B
+        //mem.a.bits.data := io.request.bits.address
       //    mem.d.ready := false.B
       //    when (edge.done(mem.a)) {
       //      state := s_response
