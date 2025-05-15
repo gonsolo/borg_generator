@@ -64,9 +64,6 @@ class TrivialInstructionCacheModule(outer: TrivialInstructionCache)
   val addressBits = edge.bundle.addressBits
   val address = Reg(UInt(addressBits.W))
 
-  printf(cf"TrivialInstructionCacheModule request valid: ${io.request.valid}\n")
-
-  //io := DontCare
   switch (state) {
     is (s_idle) {
       printf(cf"Borg icache idle\n")

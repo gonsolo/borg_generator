@@ -24,10 +24,7 @@ import freechips.rocketchip.tilelink.{
 }
 import org.chipsalliance.cde.config.Parameters
 import org.scalatest.flatspec.AnyFlatSpec
-import org.chipsalliance.diplomacy.lazymodule.{
-  LazyModule,
-  LazyModuleImp
-}
+import org.chipsalliance.diplomacy.lazymodule.{LazyModule, LazyModuleImp}
 
 class BorgFirstDriver(edge: TLEdgeOut, address: BigInt) extends Module {
   val io = IO(new Bundle {
@@ -77,17 +74,23 @@ class BorgFirstHarness(implicit p: Parameters) extends LazyModule {
 
   dut.registerNode := TLFragmenter(8, 64) := driverNode
 
-  val instructionCacheDriver = TLManagerNode(Seq(TLSlavePortParameters.v1(
-    managers = Seq(TLSlaveParameters.v1(
-      address = Seq(AddressSet(0x5000, 0xFFF)),
-      supportsGet = TransferSizes(1, 8),
-      supportsPutFull = TransferSizes(1, 8),
-      fifoId = Some(0)
-    )),
-    beatBytes = 8
-  )))
+  val fakeRamNode = TLManagerNode(
+    Seq(
+      TLSlavePortParameters.v1(
+        managers = Seq(
+          TLSlaveParameters.v1(
+            address = Seq(AddressSet(0x5000, 0xfff)),
+            supportsGet = TransferSizes(1, 8),
+            supportsPutFull = TransferSizes(1, 8),
+            fifoId = Some(0)
+          )
+        ),
+        beatBytes = 8
+      )
+    )
+  )
 
-  instructionCacheDriver := TLFragmenter(8, 64) := dut.core.instructionCache.masterNode
+  fakeRamNode := TLFragmenter(8, 64) := dut.core.instructionCache.masterNode
 
   lazy val module = Module(new Imp)
   class Imp extends LazyModuleImp(this) {
@@ -129,7 +132,8 @@ class BorgRegisterDriver(edge: TLEdgeOut) extends Module {
     val success = Output(Bool())
   })
 
-  val (s_write :: s_write_resp :: s_read :: s_read_resp :: s_done :: Nil) = Enum(5)
+  val (s_write :: s_write_resp :: s_read :: s_read_resp :: s_done :: Nil) =
+    Enum(5)
   val state = RegInit(s_write)
 
   val writeData = 1.U(32.W)
@@ -174,56 +178,66 @@ class BorgRegisterDriver(edge: TLEdgeOut) extends Module {
   }
 }
 
-class BorgInstructionCacheDriver(edge: TLEdgeIn) extends Module {
+class FakeRam(edge: TLEdgeIn) extends Module {
   val io = IO(new Bundle {
-    val tl = new TLBundle(edge.bundle)
+    val tl = Flipped(new TLBundle(edge.bundle))
     val success = Output(Bool())
   })
-  io := DontCare
+  io.success := DontCare
+  io.tl.b := DontCare
+  io.tl.c := DontCare
+  io.tl.d := DontCare
+  io.tl.e := DontCare
 
-  //val (s_write :: s_write_resp :: s_read :: s_read_resp :: s_done :: Nil) = Enum(5)
-  //val state = RegInit(s_write)
+  val (s_idle :: Nil) = Enum(1)
+  // val (s_write :: s_write_resp :: s_read :: s_read_resp :: s_done :: Nil) = Enum(5)
+  val state = RegInit(s_idle)
 
-  //val writeData = 1.U(32.W)
-  //val readData = 1.U(32.W)
-  //val kickAddress = 0x4020.U
-  //val completedAddress = 0x4040.U
+  // val writeData = 1.U(32.W)
+  // val readData = 1.U(32.W)
+  // val kickAddress = 0x4020.U
+  // val completedAddress = 0x4040.U
 
-  //io.tl.a.valid := false.B
-  //io.tl.a.bits := DontCare
-  //io.tl.d.ready := true.B
-  //io.success := false.B
+  // io.tl.a.valid := false.B
+  // io.tl.a.bits := DontCare
+  // io.tl.d.ready := true.B
+  // io.success := false.B
 
-  //val d_fired = RegNext(io.tl.d.fire)
+  // val d_fired = RegNext(io.tl.d.fire)
 
-  //switch(state) {
-  //  is(s_write) {
-  //    io.tl.a.valid := true.B
-  //    io.tl.a.bits := edge.Put(0.U, kickAddress, 2.U, writeData, 0xf.U)._2
-  //    when(io.tl.a.fire) { state := s_read_resp }
-  //  }
-  //  is(s_write_resp) {
-  //    when(d_fired && io.tl.d.bits.opcode === TLMessages.AccessAckData) {
-  //      state := s_read
-  //    }
-  //  }
-  //  is(s_read) {
-  //    io.tl.a.valid := true.B
-  //    io.tl.a.bits := edge.Get(0.U, completedAddress, 2.U)._2
-  //    when(io.tl.a.fire) { state := s_read_resp }
-  //  }
-  //  is(s_read_resp) {
-  //    when(d_fired && io.tl.d.bits.data =/= readData) {
-  //      state := s_read
-  //    }
-  //    when(d_fired && io.tl.d.bits.data === readData) {
-  //      state := s_done
-  //    }
-  //  }
-  //  is(s_done) {
-  //    io.success := true.B
-  //  }
-  //}
+  io.tl.a.ready := state === s_idle
+
+  switch(state) {
+    is(s_idle) {
+      printf(cf"FakeRam a valid: ${io.tl.a.valid}\n")
+    }
+    //  is(s_write) {
+    //    io.tl.a.valid := true.B
+    //    io.tl.a.bits := edge.Put(0.U, kickAddress, 2.U, writeData, 0xf.U)._2
+    //    when(io.tl.a.fire) { state := s_read_resp }
+    //  }
+    //  is(s_write_resp) {
+    //    when(d_fired && io.tl.d.bits.opcode === TLMessages.AccessAckData) {
+    //      state := s_read
+    //    }
+    //  }
+    //  is(s_read) {
+    //    io.tl.a.valid := true.B
+    //    io.tl.a.bits := edge.Get(0.U, completedAddress, 2.U)._2
+    //    when(io.tl.a.fire) { state := s_read_resp }
+    //  }
+    //  is(s_read_resp) {
+    //    when(d_fired && io.tl.d.bits.data =/= readData) {
+    //      state := s_read
+    //    }
+    //    when(d_fired && io.tl.d.bits.data === readData) {
+    //      state := s_done
+    //    }
+    //  }
+    //  is(s_done) {
+    //    io.success := true.B
+    //  }
+  }
 }
 
 class BorgKickHarness(implicit p: Parameters) extends LazyModule {
@@ -236,17 +250,23 @@ class BorgKickHarness(implicit p: Parameters) extends LazyModule {
 
   dut.registerNode := TLFragmenter(8, 64) := registerDriverNode
 
-  val instructionCacheDriverNode = TLManagerNode(Seq(TLSlavePortParameters.v1(
-    managers = Seq(TLSlaveParameters.v1(
-      address = Seq(AddressSet(0x5000, 0xFFF)),
-      supportsGet = TransferSizes(1, 8),
-      supportsPutFull = TransferSizes(1, 8),
-      fifoId = Some(0)
-    )),
-    beatBytes = 8
-  )))
+  val fakeRamNode = TLManagerNode(
+    Seq(
+      TLSlavePortParameters.v1(
+        managers = Seq(
+          TLSlaveParameters.v1(
+            address = Seq(AddressSet(0x5000, 0xfff)),
+            supportsGet = TransferSizes(1, 8),
+            supportsPutFull = TransferSizes(1, 8),
+            fifoId = Some(0)
+          )
+        ),
+        beatBytes = 8
+      )
+    )
+  )
 
-  instructionCacheDriverNode := TLFragmenter(8, 64) := dut.core.instructionCache.masterNode
+  fakeRamNode := TLFragmenter(8, 64) := dut.core.instructionCache.masterNode
 
   lazy val module = Module(new Imp)
   class Imp extends LazyModuleImp(this) {
@@ -255,11 +275,10 @@ class BorgKickHarness(implicit p: Parameters) extends LazyModule {
     registerDriverOut.a <> registerDriver.io.tl.a
     registerDriverOut.d <> registerDriver.io.tl.d
 
-    val (instructionCacheDriverIn, instructionCacheDriverEdge) = instructionCacheDriverNode.in(0)
-    val instructionCacheDriver = Module(new BorgInstructionCacheDriver(instructionCacheDriverEdge))
-    instructionCacheDriverIn.a <> instructionCacheDriver.io.tl.a
-    instructionCacheDriverIn.d <> instructionCacheDriver.io.tl.d
-    instructionCacheDriver.io := DontCare
+    val (fakeRamIn, fakeRamEdge) = fakeRamNode.in(0)
+    val fakeRam = Module(new FakeRam(fakeRamEdge))
+    fakeRamIn.a <> fakeRam.io.tl.a
+    fakeRamIn.d <> fakeRam.io.tl.d
 
     val io = IO(new BorgIO)
     io.success := registerDriver.io.success

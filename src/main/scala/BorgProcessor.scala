@@ -176,7 +176,6 @@ class BorgCoreModule(outer: BorgCore) extends LazyModuleImp(outer)
   instructionCache.io.request.ready := DontCare
   instructionCache.io.request.bits := DontCare
 
-  printf(cf"BorgCoreModule dataPath valid ${d.io.imem.request.valid} cache valid ${instructionCache.io.request.valid}\n")
   //instructionCache.io := DontCare
   //d.io := DontCare
 
