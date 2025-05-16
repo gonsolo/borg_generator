@@ -284,7 +284,6 @@ class BorgKickHarness(implicit p: Parameters) extends LazyModule {
 
     val io = IO(new BorgIO)
     io.success := registerDriver.io.success
-    printf(cf"BorgHarnessModule reset: ${reset.asBool}\n")
   }
 }
 
@@ -295,7 +294,6 @@ class BorgKickTester(implicit p: Parameters) extends Module {
 
   val io = IO(new BorgIO)
   io.success := harness.module.io.success
-  printf(cf"BorgKickTester reset: ${reset.asBool}\n")
 }
 
 class BorgKickTest extends AnyFlatSpec {
@@ -306,8 +304,7 @@ class BorgKickTest extends AnyFlatSpec {
       tester.reset.poke(true.B)
       tester.clock.step()
       tester.reset.poke(false.B)
-      tester.clock.step()
-      println(tester.reset.asBool.peek().litToBoolean)
+      tester.clock.step(2)
       //println(tester.reset.asBool.peek().litToBoolean)
       //tester.clock.step(14)
       //tester.io.success.expect(true.B)

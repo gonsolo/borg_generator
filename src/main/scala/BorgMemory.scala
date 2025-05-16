@@ -61,10 +61,12 @@ class TrivialInstructionCacheModule(outer: TrivialInstructionCache)
   io.response := DontCare
   io.request.ready := state === s_idle
 
-  val addressBits = edge.bundle.addressBits
-  val address = Reg(UInt(addressBits.W))
+  //val addressBits = edge.bundle.addressBits
+  //val address = Reg(UInt(addressBits.W))
 
-  printf(cf"TrivialInstructionCacheModule reset: ${reset.asBool}\n")
+  val address = RegNext(io.request.bits.address)
+
+  //printf(cf"Borg icache request valid ${io.request.valid} address 0x${io.request.bits.address}%x\n")
 
   switch (state) {
     is (s_idle) {
@@ -74,9 +76,9 @@ class TrivialInstructionCacheModule(outer: TrivialInstructionCache)
       }
     }
     is (s_request) {
-      printf(cf"Borg icache request ${io.request.bits.address}\n")
+      printf(cf"Borg icache request 0x${address}%x\n")
       //mem.a.valid := true.B
-      //mem.a.bits := edge.Get(0.U, io.request.bits.address, 2.U)._2
+      //mem.a.bits := edge.Get(0.U, address, 2.U)._2
         //mem.a.bits.data := io.request.bits.address
       //    mem.d.ready := false.B
       //    when (edge.done(mem.a)) {

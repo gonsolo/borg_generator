@@ -96,19 +96,20 @@ class BorgDataPath() extends Module
 {
   val io = IO(new BorgDataPathIo())
 
-  val programCounter = RegInit(0.U(32.W))
+  val programCounter = RegInit(io.startAddress)
   programCounter := Mux(reset.asBool, io.startAddress, programCounter + 4.U)
+  //programCounter := programCounter + 4.U
   printf(cf"BorgDataPath startAddress 0x${io.startAddress}%x programCounter: 0x$programCounter%x\n")
 
   io.imem.request.bits.address := programCounter
   io.imem.request.bits.function := M_XREAD
   io.imem.request.bits.data := DontCare
-  io.imem.request.valid := true.B
-  printf(cf"BorgDataPath request valid: ${io.imem.request.valid}\n")
+  io.imem.request.valid := Mux(reset.asBool, false.B, true.B)
+  printf(cf"BorgDataPath request valid: ${io.imem.request.valid} address: 0x${io.imem.request.bits.address}%x\n")
   io.imem.request.ready := DontCare
 
-  val instruction = Mux(io.imem.response.valid, io.imem.response.bits.data, BUBBLE)
-  printf(cf"Borg instruction: 0x$instruction%x\n")
+  //val instruction = Mux(io.imem.response.valid, io.imem.response.bits.data, BUBBLE)
+  //printf(cf"Borg instruction: 0x$instruction%x\n")
 
 //  val regfile = Mem(32, UInt(conf.xprlen.W))
 //
@@ -159,17 +160,14 @@ class BorgCoreModule(outer: BorgCore) extends LazyModuleImp(outer)
   io := DontCare
 
   val c  = Module(new BorgControlPath())
+
   val d  = Module(new BorgDataPath())
-  d.io.imem.response := DontCare
-  d.io.imem.request.bits := DontCare
-  d.io.imem.request.ready := DontCare
-  d.io.imem.request.bits.address := DontCare
-  d.io.imem.request.bits.data := DontCare
-  d.io.imem.request.bits.function := DontCare
   d.reset := reset
+  d.io.imem.response := DontCare
   d.io.startAddress := io.startAddress
 
   val instructionCache = outer.instructionCache.module
+  instructionCache.reset := reset
   instructionCache.io.request <> d.io.imem.request
   instructionCache.io.response := DontCare
   instructionCache.io.request.ready := DontCare
