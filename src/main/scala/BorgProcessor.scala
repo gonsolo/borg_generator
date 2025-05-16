@@ -13,7 +13,6 @@ import Constants._
 class BorgCoreIo() extends Bundle
 {
   val imem = new MemoryPortIo()
-  val reset = Input(Bool())
   val startAddress = Input(UInt(32.W))
 }
 //
@@ -82,7 +81,7 @@ class BorgDataPathIo() extends Bundle()
 //  val ctl = Flipped(new CtlToDatIo())
 //  val dat = new DatToCtlIo()
   val imem = Flipped(new MemoryPortIo())
-  val reset = Input(Bool())
+  //val reset = Input(Bool())
   val startAddress = Input(UInt(32.W))
 }
 //
@@ -98,8 +97,8 @@ class BorgDataPath() extends Module
   val io = IO(new BorgDataPathIo())
 
   val programCounter = RegInit(0.U(32.W))
-  programCounter := Mux(io.reset, io.startAddress, programCounter + 4.U)
-  //printf(cf"Borg program counter: $programCounter\n")
+  programCounter := Mux(reset.asBool, io.startAddress, programCounter + 4.U)
+  printf(cf"BorgDataPath startAddress 0x${io.startAddress}%x programCounter: 0x$programCounter%x\n")
 
   io.imem.request.bits.address := programCounter
   io.imem.request.bits.function := M_XREAD
@@ -167,8 +166,8 @@ class BorgCoreModule(outer: BorgCore) extends LazyModuleImp(outer)
   d.io.imem.request.bits.address := DontCare
   d.io.imem.request.bits.data := DontCare
   d.io.imem.request.bits.function := DontCare
-  d.io.reset := DontCare
-  d.io.startAddress := DontCare
+  d.reset := reset
+  d.io.startAddress := io.startAddress
 
   val instructionCache = outer.instructionCache.module
   instructionCache.io.request <> d.io.imem.request

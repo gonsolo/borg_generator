@@ -78,7 +78,9 @@ class BorgModuleImp(outer: Borg) extends LazyModuleImp(outer) {
 
   val borgResult = RegInit(0.U(32.W))
   val core = outer.core.module
-  core.io := DontCare
+  core.reset := reset
+  core.io.startAddress := "h5000".U(32.W)
+  core.io.imem := DontCare
   borgResult := core.io.imem.response.bits.data
 
   val counter = RegInit(0.U(32.W))

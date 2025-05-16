@@ -54,7 +54,7 @@ class TrivialInstructionCacheModule(outer: TrivialInstructionCache)
   val state = RegInit(s_idle)
 
   // TileLink port to memory.
-  val (mem, edge) = outer.masterNode.out(0)
+  val (mem, edge) = outer.node.out(0)
 
   // IO between Core and ICache.
   val io = IO(new MemoryPortIo)
@@ -64,6 +64,8 @@ class TrivialInstructionCacheModule(outer: TrivialInstructionCache)
   val addressBits = edge.bundle.addressBits
   val address = Reg(UInt(addressBits.W))
 
+  printf(cf"TrivialInstructionCacheModule reset: ${reset.asBool}\n")
+
   switch (state) {
     is (s_idle) {
       printf(cf"Borg icache idle\n")
@@ -72,8 +74,9 @@ class TrivialInstructionCacheModule(outer: TrivialInstructionCache)
       }
     }
     is (s_request) {
-      printf(cf"Borg icache request\n")
-        //mem.a.valid := true.B
+      printf(cf"Borg icache request ${io.request.bits.address}\n")
+      //mem.a.valid := true.B
+      //mem.a.bits := edge.Get(0.U, io.request.bits.address, 2.U)._2
         //mem.a.bits.data := io.request.bits.address
       //    mem.d.ready := false.B
       //    when (edge.done(mem.a)) {
@@ -99,7 +102,7 @@ class TrivialInstructionCache(implicit p: Parameters) extends LazyModule {
   lazy val module = new TrivialInstructionCacheModule(this)
 
   // Connection to main memory.
-  val masterNode = TLClientNode(
+  val node = TLClientNode(
     Seq(
       TLMasterPortParameters.v1(
         Seq(

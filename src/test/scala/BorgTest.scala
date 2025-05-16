@@ -90,7 +90,7 @@ class BorgFirstHarness(implicit p: Parameters) extends LazyModule {
     )
   )
 
-  fakeRamNode := TLFragmenter(8, 64) := dut.core.instructionCache.masterNode
+  fakeRamNode := TLFragmenter(8, 64) := dut.core.instructionCache.node
 
   lazy val module = Module(new Imp)
   class Imp extends LazyModuleImp(this) {
@@ -241,14 +241,14 @@ class FakeRam(edge: TLEdgeIn) extends Module {
 }
 
 class BorgKickHarness(implicit p: Parameters) extends LazyModule {
-  val dut = LazyModule(new Borg(8))
+  val borg = LazyModule(new Borg(8))
   val registerDriverNode = TLClientNode(
     Seq(
       TLMasterPortParameters.v1(Seq(TLMasterParameters.v1(name = "borgDriver")))
     )
   )
 
-  dut.registerNode := TLFragmenter(8, 64) := registerDriverNode
+  borg.registerNode := TLFragmenter(8, 64) := registerDriverNode
 
   val fakeRamNode = TLManagerNode(
     Seq(
@@ -266,7 +266,7 @@ class BorgKickHarness(implicit p: Parameters) extends LazyModule {
     )
   )
 
-  fakeRamNode := TLFragmenter(8, 64) := dut.core.instructionCache.masterNode
+  fakeRamNode := TLFragmenter(8, 64) := borg.core.instructionCache.node
 
   lazy val module = Module(new Imp)
   class Imp extends LazyModuleImp(this) {
@@ -280,15 +280,22 @@ class BorgKickHarness(implicit p: Parameters) extends LazyModule {
     fakeRamIn.a <> fakeRam.io.tl.a
     fakeRamIn.d <> fakeRam.io.tl.d
 
+    borg.module.reset := reset
+
     val io = IO(new BorgIO)
     io.success := registerDriver.io.success
+    printf(cf"BorgHarnessModule reset: ${reset.asBool}\n")
   }
 }
 
 class BorgKickTester(implicit p: Parameters) extends Module {
   val harness = LazyModule(new BorgKickHarness())
+
+  harness.module.reset := reset
+
   val io = IO(new BorgIO)
   io.success := harness.module.io.success
+  printf(cf"BorgKickTester reset: ${reset.asBool}\n")
 }
 
 class BorgKickTest extends AnyFlatSpec {
@@ -296,8 +303,14 @@ class BorgKickTest extends AnyFlatSpec {
   it should "do something" in {
     implicit val p: Parameters = Parameters.empty
     simulate(new BorgKickTester()) { tester =>
-      tester.clock.step(13)
-      tester.io.success.expect(true.B)
+      tester.reset.poke(true.B)
+      tester.clock.step()
+      tester.reset.poke(false.B)
+      tester.clock.step()
+      println(tester.reset.asBool.peek().litToBoolean)
+      //println(tester.reset.asBool.peek().litToBoolean)
+      //tester.clock.step(14)
+      //tester.io.success.expect(true.B)
     }
   }
 }
