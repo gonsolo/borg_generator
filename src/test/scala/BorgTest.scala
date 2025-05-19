@@ -5,7 +5,7 @@ package borg
 
 import chisel3._
 import chisel3.simulator.EphemeralSimulator._
-import chisel3.util.{Enum, is, switch}
+import chisel3.util.{Cat, Enum, is, switch}
 import freechips.rocketchip.diplomacy.{AddressSet, IdRange, TransferSizes}
 import freechips.rocketchip.resources.SimpleDevice
 import freechips.rocketchip.tilelink.{
@@ -189,54 +189,36 @@ class FakeRam(edge: TLEdgeIn) extends Module {
   io.tl.d := DontCare
   io.tl.e := DontCare
 
-  val (s_idle :: Nil) = Enum(1)
-  // val (s_write :: s_write_resp :: s_read :: s_read_resp :: s_done :: Nil) = Enum(5)
+  val (s_idle :: s_answer :: Nil) = Enum(2)
   val state = RegInit(s_idle)
 
-  // val writeData = 1.U(32.W)
-  // val readData = 1.U(32.W)
-  // val kickAddress = 0x4020.U
-  // val completedAddress = 0x4040.U
-
-  // io.tl.a.valid := false.B
-  // io.tl.a.bits := DontCare
-  // io.tl.d.ready := true.B
-  // io.success := false.B
-
-  // val d_fired = RegNext(io.tl.d.fire)
-
   io.tl.a.ready := state === s_idle
+  io.tl.d.valid := state === s_answer
 
+  val address = RegNext(io.tl.a.bits.address)
+
+  printf(cf"FakeRam state: $state\n")
   switch(state) {
     is(s_idle) {
-      printf(cf"FakeRam a valid: ${io.tl.a.valid}\n")
+      printf(cf"FakeRam idle, a valid: ${io.tl.a.valid} a address: 0x${io.tl.a.bits.address}%x\n")
+      when (io.tl.a.valid) {
+        state := s_answer
+      }
     }
-    //  is(s_write) {
-    //    io.tl.a.valid := true.B
-    //    io.tl.a.bits := edge.Put(0.U, kickAddress, 2.U, writeData, 0xf.U)._2
-    //    when(io.tl.a.fire) { state := s_read_resp }
-    //  }
-    //  is(s_write_resp) {
-    //    when(d_fired && io.tl.d.bits.opcode === TLMessages.AccessAckData) {
-    //      state := s_read
-    //    }
-    //  }
-    //  is(s_read) {
-    //    io.tl.a.valid := true.B
-    //    io.tl.a.bits := edge.Get(0.U, completedAddress, 2.U)._2
-    //    when(io.tl.a.fire) { state := s_read_resp }
-    //  }
-    //  is(s_read_resp) {
-    //    when(d_fired && io.tl.d.bits.data =/= readData) {
-    //      state := s_read
-    //    }
-    //    when(d_fired && io.tl.d.bits.data === readData) {
-    //      state := s_done
-    //    }
-    //  }
-    //  is(s_done) {
-    //    io.success := true.B
-    //  }
+    is(s_answer) {
+      printf(cf"FakeRam answer, address: 0x${address}%x\n")
+      // Always answer with Add Immediate
+      // rd = rs1 + 666
+      val immediate = 666.U(12.W)
+      val rs1 = 0.U(5.W)
+      val funct3 = "h0".U(3.W)
+      val rd = 1.U(5.W)
+      val opcode_addi = "b0010011".U(7.W)
+      val instruction = Cat(immediate, rs1, funct3, rd, opcode_addi)
+      io.tl.d.bits := edge.AccessAck(io.tl.a.bits, instruction)
+
+      state := s_idle
+    }
   }
 }
 
@@ -304,7 +286,7 @@ class BorgKickTest extends AnyFlatSpec {
       tester.reset.poke(true.B)
       tester.clock.step()
       tester.reset.poke(false.B)
-      tester.clock.step(2)
+      tester.clock.step(3)
       //println(tester.reset.asBool.peek().litToBoolean)
       //tester.clock.step(14)
       //tester.io.success.expect(true.B)

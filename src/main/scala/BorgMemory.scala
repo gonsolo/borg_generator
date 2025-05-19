@@ -66,7 +66,8 @@ class TrivialInstructionCacheModule(outer: TrivialInstructionCache)
 
   val address = RegNext(io.request.bits.address)
 
-  printf(cf"Borg icache request valid ${io.request.valid} address 0x${io.request.bits.address}%x\n")
+  mem.a.valid := state === s_request
+  //printf(cf"Borg icache request valid ${io.request.valid} address 0x${io.request.bits.address}%x\n")
 
   switch (state) {
     is (s_idle) {
@@ -78,25 +79,27 @@ class TrivialInstructionCacheModule(outer: TrivialInstructionCache)
     is (s_request) {
       printf(cf"Borg icache request 0x${address}%x\n")
       //mem.a.valid := true.B
-      //mem.a.bits := edge.Get(0.U, address, 2.U)._2
-        //mem.a.bits.data := io.request.bits.address
+      mem.a.bits := edge.Get(0.U, address, 2.U)._2
       //    mem.d.ready := false.B
-      //    when (edge.done(mem.a)) {
-      //      state := s_response
-      //    }
+      when (edge.done(mem.a)) {
+        state := s_response
+      }
     }
-    //  is (s_response) {
-    //    printf(cf"Borg icache response\n")
-    //    mem.a.valid := false.B
-    //    mem.d.ready := true.B
-    //    when (mem.d.valid === true.B) {
+    is (s_response) {
+      printf(cf"Borg icache response\n")
+      //mem.a.valid := false.B
+      mem.d.ready := true.B
+      when (mem.d.fire) {
+        printf(cf"  d fire, data: ${mem.d.bits.data}%b\n")
+      }
+    //  when (mem.d.valid === true.B) {
     //      io.response.bits.data := mem.d.bits.data
     //      io.response.valid := true.B
     //    }
     //    when (mem.d.valid === false.B) {
     //      state := s_idle
     //    }
-    //  }
+    }
   }
 }
 
