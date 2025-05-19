@@ -18,6 +18,14 @@ import scala.language.reflectiveCalls
 trait RISCVConstants {
   // The Bubble Instruction (Machine generated NOP)
   val BUBBLE = 0x4033.U(32.W)
+
+  // The most and least significant bits of the destination register rd
+  val RD_MSB = 11
+  val RD_LSB = 7
+
+  // The most and least significant bits of the first source register rs1
+  val RS1_MSB = 19
+  val RS1_LSB = 15
 }
 
 trait MemoryOpConstants {
@@ -29,7 +37,14 @@ trait MemoryOpConstants {
   val M_XWRITE = "b1".asUInt(1.W)
 }
 
-object Constants extends RISCVConstants with MemoryOpConstants {}
+trait ScalarOpConstants
+{
+  // ALU Operation Signal
+  val ALU_X   = 0.asUInt(4.W) // unspecified alu function
+  val ALU_ADD = 1.asUInt(4.W) // add alu function
+}
+
+object Constants extends RISCVConstants with MemoryOpConstants with ScalarOpConstants {}
 
 import Constants._
 
