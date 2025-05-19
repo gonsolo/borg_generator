@@ -197,6 +197,59 @@ class FakeRam(edge: TLEdgeIn) extends Module {
 
   val address = RegNext(io.tl.a.bits.address)
 
+  val instructions = Mem(5, UInt(32.W))
+
+  val load_address = "h5100".U(32.W)
+
+  // Load upper from address 0x5100 into a0 using addi
+  {
+    val immediate = load_address(31, 12)
+    val rd = 10.U(5.W) // a0 = register 10
+    val opcode = "b0110111".U(7.W)
+    val instruction = Cat(immediate, rd, opcode) // U format
+    instructions(0) := instruction
+  }
+   // Load rest of address 0x5100 into a0 using addi
+  {
+    val immediate = load_address(11, 0)
+    val rs1 = 0.U(5.W)
+    val funct3 = "h0".U(3.W)
+    val rd = 10.U(5.W) // a0 = register 10
+    val opcode = "b0010011".U(7.W)
+    val instruction = Cat(immediate, rs1, funct3, rd, opcode) // I format
+    instructions(1) := instruction
+  }
+  // Load value 1 from address to a1 with lw
+  {
+    val immediate = 0.U(12.W)
+    val rs1 = 10.U(5.W) // register 10 from above
+    val funct3 = "h2".U(3.W)
+    val rd = 5.U(5.W) // Load to t0 = register 5
+    val opcode = "b0000011".U(7.W)
+    val instruction = Cat(immediate, rs1, funct3, rd, opcode) // I format
+    instructions(2) := instruction
+  }
+  // Add 666 to register t0 with addi
+  {
+    val immediate = 666.U(12.W)
+    val rs1 = 5.U(5.W) // Add to t0 = register 5
+    val funct3 = "h0".U(3.W)
+    val rd = 5.U(5.W) // Store to t0 again
+    val opcode = "b0010011".U(7.W)
+    val instruction = Cat(immediate, rs1, funct3, rd, opcode) // I format
+    instructions(3) := instruction
+  }
+  // Store value
+  {
+    val immediate = 0.U(12.W)
+    val rs2 = 5.U(5.W) // Get value from t0 = register 5
+    val rs1 = 10.U(5.W) // Get store address from register a0 = 10
+    val funct3 = "h2".U(3.W)
+    val opcode = "b0100011".U(7.W)
+    val instruction = Cat(immediate(11, 5), rs2, rs1, funct3, immediate(4, 0), opcode) // S format
+    instructions(4) := instruction
+  }
+
   printf(cf"FakeRam state: $state\n")
   switch(state) {
     is(s_idle) {
@@ -207,14 +260,8 @@ class FakeRam(edge: TLEdgeIn) extends Module {
     }
     is(s_answer) {
       printf(cf"FakeRam answer, address: 0x${address}%x\n")
-      // Always answer with Add Immediate
-      // rd = rs1 + 666
-      val immediate = 666.U(12.W)
-      val rs1 = 0.U(5.W)
-      val funct3 = "h0".U(3.W)
-      val rd = 1.U(5.W)
-      val opcode_addi = "b0010011".U(7.W)
-      val instruction = Cat(immediate, rs1, funct3, rd, opcode_addi)
+      // Map ram address 0x5000 to zero
+      val instruction = instructions(address - 0x5000.U)
       io.tl.d.bits := edge.AccessAck(io.tl.a.bits, instruction)
 
       state := s_idle

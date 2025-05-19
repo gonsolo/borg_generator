@@ -101,7 +101,6 @@ class TrivialInstructionCacheModule(outer: TrivialInstructionCache)
       printf(cf"Borg icache response\n")
       mem.d.ready := true.B
       when (mem.d.fire) {
-        printf(cf"  d fire, data: ${mem.d.bits.data}%b\n")
         io.response.bits.data := mem.d.bits.data
         io.response.valid := true.B
       }
