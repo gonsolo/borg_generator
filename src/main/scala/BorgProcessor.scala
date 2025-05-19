@@ -110,8 +110,8 @@ class BorgDataPath() extends Module
 
   printf(cf"  response valid: ${io.imem.response.valid} data: ${io.imem.response.bits.data}\n")
 
-  //val instruction = Mux(io.imem.response.valid, io.imem.response.bits.data, BUBBLE)
-  //printf(cf"Borg instruction: 0x$instruction%x\n")
+  val instruction = Mux(io.imem.response.valid, io.imem.response.bits.data, BUBBLE)
+  printf(cf"Borg instruction: 0x$instruction%x\n")
 
 //  val regfile = Mem(32, UInt(conf.xprlen.W))
 //
