@@ -99,7 +99,7 @@ class BorgDataPath() extends Module
   val programCounter = RegInit(io.startAddress)
   programCounter := Mux(reset.asBool, io.startAddress, programCounter + 4.U)
   //programCounter := programCounter + 4.U
-  printf(cf"BorgDataPath startAddress 0x${io.startAddress}%x programCounter: 0x$programCounter%x\n")
+  //printf(cf"BorgDataPath startAddress 0x${io.startAddress}%x programCounter: 0x$programCounter%x\n")
 
   io.imem.request.bits.address := programCounter
   io.imem.request.bits.function := M_XREAD
@@ -107,6 +107,8 @@ class BorgDataPath() extends Module
   io.imem.request.valid := Mux(reset.asBool, false.B, true.B)
   printf(cf"BorgDataPath request valid: ${io.imem.request.valid} address: 0x${io.imem.request.bits.address}%x\n")
   io.imem.request.ready := DontCare
+
+  printf(cf"  response valid: ${io.imem.response.valid} data: ${io.imem.response.bits.data}\n")
 
   //val instruction = Mux(io.imem.response.valid, io.imem.response.bits.data, BUBBLE)
   //printf(cf"Borg instruction: 0x$instruction%x\n")
@@ -163,13 +165,12 @@ class BorgCoreModule(outer: BorgCore) extends LazyModuleImp(outer)
 
   val d  = Module(new BorgDataPath())
   d.reset := reset
-  d.io.imem.response := DontCare
   d.io.startAddress := io.startAddress
 
   val instructionCache = outer.instructionCache.module
   instructionCache.reset := reset
   instructionCache.io.request <> d.io.imem.request
-  instructionCache.io.response := DontCare
+  d.io.imem.response <> instructionCache.io.response
 
   // Connect the control unit to the data path unit
   // For example the control unit decodes an instruction and informs the data path unit

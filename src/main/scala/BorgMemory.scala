@@ -58,16 +58,13 @@ class TrivialInstructionCacheModule(outer: TrivialInstructionCache)
 
   // IO between Core and ICache.
   val io = IO(new MemoryPortIo)
-  io.response := DontCare
   io.request.ready := state === s_idle
-
-  //val addressBits = edge.bundle.addressBits
-  //val address = Reg(UInt(addressBits.W))
 
   val address = RegNext(io.request.bits.address)
 
   mem.a.valid := state === s_request
-  //printf(cf"Borg icache request valid ${io.request.valid} address 0x${io.request.bits.address}%x\n")
+  io.response.valid := false.B
+  io.response.bits.data := 0.U
 
   switch (state) {
     is (s_idle) {
@@ -87,18 +84,12 @@ class TrivialInstructionCacheModule(outer: TrivialInstructionCache)
     }
     is (s_response) {
       printf(cf"Borg icache response\n")
-      //mem.a.valid := false.B
       mem.d.ready := true.B
       when (mem.d.fire) {
         printf(cf"  d fire, data: ${mem.d.bits.data}%b\n")
+        io.response.bits.data := mem.d.bits.data
+        io.response.valid := true.B
       }
-    //  when (mem.d.valid === true.B) {
-    //      io.response.bits.data := mem.d.bits.data
-    //      io.response.valid := true.B
-    //    }
-    //    when (mem.d.valid === false.B) {
-    //      state := s_idle
-    //    }
     }
   }
 }
