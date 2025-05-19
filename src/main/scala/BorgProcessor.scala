@@ -170,29 +170,17 @@ class BorgCoreModule(outer: BorgCore) extends LazyModuleImp(outer)
   instructionCache.reset := reset
   instructionCache.io.request <> d.io.imem.request
   instructionCache.io.response := DontCare
-  instructionCache.io.request.ready := DontCare
-  instructionCache.io.request.bits := DontCare
 
-  //instructionCache.io := DontCare
-  //d.io := DontCare
+  // Connect the control unit to the data path unit
+  // For example the control unit decodes an instruction and informs the data path unit
+  // about the alu function
+  // c.io.ctl <> d.io.ctl
+//  c.io.dat <> d.io.dat
 
-  //instructionCache.io.request := io.imem.request
-//  io.imem.resp.valid := DontCare
-//  io.imem.resp.bits := DontCare
-//  io.debug_out := d.io.debug_out
-//
-//  d.io.imem.resp := DontCare
-////
-////  // Connect the control unit to the data path unit
-////  // For example the control unit decodes an instruction and informs the data path unit
-////  // about the alu function
-////  c.io.ctl <> d.io.ctl
-////  c.io.dat <> d.io.dat
-//
 //  io.imem <> d.io.imem
 //  io.reset <> d.io.reset
 //
-////  d.io.reset_vector := io.reset_vector
+//  d.io.reset_vector := io.reset_vector
 }
 
 class BorgCore()(implicit p: Parameters) extends LazyModule

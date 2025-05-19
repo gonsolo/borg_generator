@@ -66,7 +66,7 @@ class TrivialInstructionCacheModule(outer: TrivialInstructionCache)
 
   val address = RegNext(io.request.bits.address)
 
-  //printf(cf"Borg icache request valid ${io.request.valid} address 0x${io.request.bits.address}%x\n")
+  printf(cf"Borg icache request valid ${io.request.valid} address 0x${io.request.bits.address}%x\n")
 
   switch (state) {
     is (s_idle) {
