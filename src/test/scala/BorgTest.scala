@@ -36,6 +36,7 @@ class BorgFirstDriver(edge: TLEdgeOut, address: BigInt) extends Module {
   val state = RegInit(s_read)
 
   val readData = 666.U(32.W)
+  printf(cf"readData: $readData\n")
   val addr = address.U
 
   io.tl.a.valid := false.B
@@ -65,14 +66,14 @@ class BorgFirstDriver(edge: TLEdgeOut, address: BigInt) extends Module {
 }
 
 class BorgFirstHarness(implicit p: Parameters) extends LazyModule {
-  val dut = LazyModule(new Borg(8))
-  val driverNode = TLClientNode(
+  val borg = LazyModule(new Borg(8))
+  val registerDriverNode = TLClientNode(
     Seq(
       TLMasterPortParameters.v1(Seq(TLMasterParameters.v1(name = "borgDriver")))
     )
   )
 
-  dut.registerNode := TLFragmenter(8, 64) := driverNode
+  borg.registerNode := TLFragmenter(8, 64) := registerDriverNode
 
   val fakeRamNode = TLManagerNode(
     Seq(
@@ -90,18 +91,24 @@ class BorgFirstHarness(implicit p: Parameters) extends LazyModule {
     )
   )
 
-  fakeRamNode := TLFragmenter(8, 64) := dut.core.instructionCache.node
+  fakeRamNode := TLFragmenter(8, 64) := borg.core.instructionCache.node
 
   lazy val module = Module(new Imp)
   class Imp extends LazyModuleImp(this) {
-    val (out, edge) = driverNode.out(0)
-    val driver = Module(new BorgFirstDriver(edge, 0x4000))
+    val (registerDriverOut, registerDriverEdge) = registerDriverNode.out(0)
+    val registerDriver= Module(new BorgFirstDriver(registerDriverEdge, 0x4000))
+    registerDriverOut.a <> registerDriver.io.tl.a
+    registerDriverOut.d <> registerDriver.io.tl.d
 
-    out.a <> driver.io.tl.a
-    out.d <> driver.io.tl.d
+    val (fakeRamIn, fakeRamEdge) = fakeRamNode.in(0)
+    val fakeRam = Module(new FakeRam(fakeRamEdge))
+    fakeRamIn.a <> fakeRam.io.tl.a
+    fakeRamIn.d <> fakeRam.io.tl.d
+
+    borg.module.reset := reset
 
     val io = IO(new BorgIO)
-    io.success := driver.io.success
+    io.success := registerDriver.io.success
   }
 }
 
@@ -120,7 +127,10 @@ class BorgFirstTest extends AnyFlatSpec {
   it should "do something" in {
     implicit val p: Parameters = Parameters.empty
     simulate(new BorgFirstTester()) { tester =>
-      tester.clock.step(3)
+      tester.reset.poke(true.B)
+      tester.clock.step()
+      tester.reset.poke(false.B)
+      tester.clock.step(2)
       tester.io.success.expect(true.B)
     }
   }
@@ -152,7 +162,7 @@ class BorgRegisterDriver(edge: TLEdgeOut) extends Module {
     is(s_write) {
       io.tl.a.valid := true.B
       io.tl.a.bits := edge.Put(0.U, kickAddress, 2.U, writeData, 0xf.U)._2
-      when(io.tl.a.fire) { state := s_read_resp }
+      when(io.tl.a.fire) { state := s_write_resp }
     }
     is(s_write_resp) {
       when(d_fired && io.tl.d.bits.opcode === TLMessages.AccessAckData) {
@@ -165,6 +175,7 @@ class BorgRegisterDriver(edge: TLEdgeOut) extends Module {
       when(io.tl.a.fire) { state := s_read_resp }
     }
     is(s_read_resp) {
+      printf(cf"  data: ${io.tl.d.bits.data}, expected: $readData\n")
       when(d_fired && io.tl.d.bits.data =/= readData) {
         state := s_read
       }
