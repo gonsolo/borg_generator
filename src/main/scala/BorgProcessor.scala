@@ -60,7 +60,7 @@ class BorgControlPath() extends Module
   // Put the alu function into a variable
   val cs_alu_fun :: cs_wb_sel :: Nil = csignals
 
-  printf(cf"BorgControlPath: instruction: ${io.dat.instruction}%b, ALU fun: $cs_alu_fun, WB: $cs_wb_sel\n")
+  //printf(cf"BorgControlPath: instruction: ${io.dat.instruction}%b, ALU fun: $cs_alu_fun, WB: $cs_wb_sel\n")
 
   // Set the data path control signals
   io.ctl.alu_fun := cs_alu_fun
@@ -104,11 +104,11 @@ class BorgDataPath() extends Module
   io.imem.request.bits.function := M_XREAD
   io.imem.request.bits.data := DontCare
   io.imem.request.valid := Mux(reset.asBool, false.B, true.B)
-  printf(cf"BorgDataPath request valid: ${io.imem.request.valid} address: 0x${io.imem.request.bits.address}%x\n")
+  //printf(cf"  request valid: ${io.imem.request.valid} address: 0x${io.imem.request.bits.address}%x, stall: ${io.ctl.stall}\n")
   io.imem.request.ready := DontCare
 
   val instruction = Mux(io.imem.response.valid, io.imem.response.bits.data, BUBBLE)
-  printf(cf"Borg instruction: 0x$instruction%x\n")
+  //printf(cf"Borg instruction: 0x$instruction%x\n")
 
   val regfile = Mem(32, UInt(64.W))
 
@@ -119,7 +119,7 @@ class BorgDataPath() extends Module
 
   // immediates
   val imm_i = instruction(31, 20)
-  printf(cf" immediate: $imm_i\n")
+  //printf(cf" immediate: $imm_i\n")
 
   // sign-extend immediates
   val imm_i_sext = Cat(Fill(20,imm_i(11)), imm_i)
@@ -135,28 +135,28 @@ class BorgDataPath() extends Module
   alu_out := MuxCase(0.U, unsafeWrapArray(Array(
       (io.ctl.alu_fun === ALU_ADD) -> (alu_op1 + alu_op2).asUInt
     )))
-  printf(cf" alu_out: $alu_out\n")
+  //printf(cf" alu_out: $alu_out\n")
 
   val wb_data = Wire(UInt(64.W))
 
   wb_data := alu_out
-  printf(cf" wb_data: $wb_data\n")
+  //printf(cf" wb_data: $wb_data\n")
 
   // Writeback write enable
   val wb_wen = true.B // TODO
 
   // The address to write back to
   val wb_addr = instruction(RD_MSB, RD_LSB)
-  printf(cf" wb_addr: $wb_addr\n")
+  //printf(cf" wb_addr: $wb_addr\n")
 
   when (wb_wen && (wb_addr =/= 0.U))
   {
-    printf(" writing\n")
+    //printf(" writing\n")
     regfile(wb_addr) := wb_data
   }
 
   val address_written = RegNext(wb_addr)
-  printf(cf"  regfile wb_addr: ${regfile(address_written)}\n")
+  //printf(cf"  regfile wb_addr: ${regfile(address_written)}\n")
 
   // To control unit
   io.dat.instruction := instruction

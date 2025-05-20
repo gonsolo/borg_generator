@@ -36,7 +36,6 @@ class BorgFirstDriver(edge: TLEdgeOut, address: BigInt) extends Module {
   val state = RegInit(s_read)
 
   val readData = 666.U(32.W)
-  printf(cf"readData: $readData\n")
   val addr = address.U
 
   io.tl.a.valid := false.B
@@ -175,7 +174,7 @@ class BorgRegisterDriver(edge: TLEdgeOut) extends Module {
       when(io.tl.a.fire) { state := s_read_resp }
     }
     is(s_read_resp) {
-      printf(cf"  data: ${io.tl.d.bits.data}, expected: $readData\n")
+      //printf(cf"  data: ${io.tl.d.bits.data}, expected: $readData\n")
       when(d_fired && io.tl.d.bits.data =/= readData) {
         state := s_read
       }
@@ -261,18 +260,18 @@ class FakeRam(edge: TLEdgeIn) extends Module {
     instructions(4) := instruction
   }
 
-  printf(cf"FakeRam state: $state\n")
+  //printf(cf"FakeRam state: $state\n")
   switch(state) {
     is(s_idle) {
-      printf(cf"FakeRam idle, a valid: ${io.tl.a.valid} a address: 0x${io.tl.a.bits.address}%x\n")
+      //printf(cf"FakeRam idle, a valid: ${io.tl.a.valid} a address: 0x${io.tl.a.bits.address}%x\n")
       when (io.tl.a.valid) {
         state := s_answer
       }
     }
     is(s_answer) {
-      printf(cf"FakeRam answer, address: 0x${address}%x\n")
+      //printf(cf"FakeRam answer, address: 0x${address}%x\n")
       // Map ram address 0x5000 to zero
-      val instruction = instructions(address - 0x5000.U)
+      val instruction = instructions((address - 0x5000.U)/4.U)
       io.tl.d.bits := edge.AccessAck(io.tl.a.bits, instruction)
 
       state := s_idle
@@ -344,7 +343,7 @@ class BorgKickTest extends AnyFlatSpec {
       tester.reset.poke(true.B)
       tester.clock.step()
       tester.reset.poke(false.B)
-      tester.clock.step(4)
+      tester.clock.step(22)
       //println(tester.reset.asBool.peek().litToBoolean)
       //tester.clock.step(14)
       //tester.io.success.expect(true.B)
