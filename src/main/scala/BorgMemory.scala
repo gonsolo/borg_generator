@@ -40,8 +40,14 @@ trait MemoryOpConstants {
 trait ScalarOpConstants
 {
   // ALU Operation Signal
-  val ALU_X   = 0.asUInt(4.W) // unspecified alu function
-  val ALU_ADD = 1.asUInt(4.W) // add alu function
+  val ALU_X     =  0.asUInt(4.W) // unspecified alu function
+  val ALU_ADD   =  1.asUInt(4.W) // add alu function
+  val ALU_COPY1 = 11.asUInt(4.W)
+
+  // Writeback Select Signal
+  val WB_X      =  0.asUInt(2.W)
+  val WB_ALU    =  1.asUInt(2.W)
+  val WB_MEM    =  2.asUInt(2.W)
 }
 
 object Constants extends RISCVConstants with MemoryOpConstants with ScalarOpConstants {}

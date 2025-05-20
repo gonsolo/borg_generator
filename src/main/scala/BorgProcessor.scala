@@ -25,11 +25,15 @@ class DatToCtlIo() extends Bundle {
 class BorgControlPathIo() extends Bundle {
   val dat = Flipped(new DatToCtlIo())
   val ctl = new CtlToDatIo()
+  val imem = Flipped(new MemoryPortIo())
 }
 
 object Instructions
 {
-  def ADDI               = BitPat("b?????????????????000?????0010011")
+  def LUI  = BitPat("b?????????????????????????0110111")
+  def LW   = BitPat("b?????????????????010?????0000011")
+  def SW   = BitPat("b?????????????????010?????0100011")
+  def ADDI = BitPat("b?????????????????000?????0010011")
 }
 
 import Instructions._
@@ -38,29 +42,42 @@ class BorgControlPath() extends Module
 {
   // Input and output signals for the control unit
   val io = IO(new BorgControlPathIo())
+  io.imem.request := DontCare
 
   // Look up the incoming instruction and set the ALU operation accordingly
   val csignals = ListLookup(
     io.dat.instruction,
-    List(              ALU_X),
+                       List(ALU_X,      WB_X),
     Array(
-    // instruction  | alu function
-      ADDI          -> List(ALU_ADD)
+    // instruction    | alu function    | writeback select
+      LUI           -> List(ALU_COPY1,  WB_ALU),
+      LW            -> List(ALU_ADD,    WB_MEM),
+      SW            -> List(ALU_ADD,    WB_X),
+      ADDI          -> List(ALU_ADD,    WB_ALU)
     )
   )
 
   // Put the alu function into a variable
-  val cs_alu_fun :: Nil = csignals
+  val cs_alu_fun :: cs_wb_sel :: Nil = csignals
+
+  printf(cf"BorgControlPath: instruction: ${io.dat.instruction}%b, ALU fun: $cs_alu_fun, WB: $cs_wb_sel\n")
 
   // Set the data path control signals
   io.ctl.alu_fun := cs_alu_fun
+
+  val stall = !io.imem.response.valid
+  io.ctl.stall := stall
 }
 
 // Signals from the control unit to the data path unit
 class CtlToDatIo() extends Bundle() {
 
-  // The control unit decodes the instruction and set the correspong alu function for the data path unit
+  // The CPU is stalled when waiting for the instruction cache. The program counter is not updated then.
+  val stall = Output(Bool())
+
+  // The control unit decodes the instruction and set the correspong alu function for the data path unit.
   val alu_fun = Output(UInt(ALU_X.getWidth.W))
+
 }
 
 class BorgDataPathIo() extends Bundle()
@@ -76,7 +93,12 @@ class BorgDataPath() extends Module
   val io = IO(new BorgDataPathIo())
 
   val programCounter = RegInit(io.startAddress)
-  programCounter := Mux(reset.asBool, io.startAddress, programCounter + 4.U)
+  val programCounterNext = RegInit(io.startAddress)
+  programCounterNext := Mux(reset.asBool, io.startAddress, programCounter + 4.U)
+
+  when (!io.ctl.stall) {
+    programCounter := programCounterNext
+  }
 
   io.imem.request.bits.address := programCounter
   io.imem.request.bits.function := M_XREAD
@@ -146,6 +168,7 @@ class BorgCoreModule(outer: BorgCore) extends LazyModuleImp(outer)
   io := DontCare
 
   val c  = Module(new BorgControlPath())
+  c.io.imem.request := DontCare
 
   val d  = Module(new BorgDataPath())
   d.reset := reset
@@ -157,6 +180,7 @@ class BorgCoreModule(outer: BorgCore) extends LazyModuleImp(outer)
   instructionCache.reset := reset
   instructionCache.io.request <> d.io.imem.request
   d.io.imem.response <> instructionCache.io.response
+  c.io.imem.response <> instructionCache.io.response
 
   // Connect the control unit to the data path unit
   // For example the control unit decodes an instruction and informs the data path unit
