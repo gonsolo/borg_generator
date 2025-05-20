@@ -60,7 +60,7 @@ class BorgControlPath() extends Module
   // Put the alu function into a variable
   val cs_alu_fun :: cs_wb_sel :: Nil = csignals
 
-  //printf(cf"BorgControlPath: instruction: ${io.dat.instruction}%b, ALU fun: $cs_alu_fun, WB: $cs_wb_sel\n")
+  printf(cf"BorgControlPath: instruction: ${io.dat.instruction}%b, ALU fun: $cs_alu_fun, WB: $cs_wb_sel\n")
 
   // Set the data path control signals
   io.ctl.alu_fun := cs_alu_fun

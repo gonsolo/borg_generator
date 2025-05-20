@@ -269,10 +269,11 @@ class FakeRam(edge: TLEdgeIn) extends Module {
       }
     }
     is(s_answer) {
-      //printf(cf"FakeRam answer, address: 0x${address}%x\n")
-      // Map ram address 0x5000 to zero
-      val instruction = instructions((address - 0x5000.U)/4.U)
+      val instruction_index = Wire(UInt(32.W))
+      instruction_index := (address - 0x5000.U)/4.U
+      val instruction = instructions(instruction_index)
       io.tl.d.bits := edge.AccessAck(io.tl.a.bits, instruction)
+      printf(cf"FakeRam answer, address: 0x$address%x, instruction_index: $instruction_index, instruction: $instruction%b\n")
 
       state := s_idle
     }
@@ -343,7 +344,7 @@ class BorgKickTest extends AnyFlatSpec {
       tester.reset.poke(true.B)
       tester.clock.step()
       tester.reset.poke(false.B)
-      tester.clock.step(22)
+      tester.clock.step(16)
       //println(tester.reset.asBool.peek().litToBoolean)
       //tester.clock.step(14)
       //tester.io.success.expect(true.B)
