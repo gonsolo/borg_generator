@@ -308,9 +308,6 @@ class BorgKickHarness(implicit p: Parameters) extends LazyModule {
   )
 
   val xbar = TLXbar()
-
-  //xbar := TLFragmenter(8, 64) := borg.core.instructionCache.node
-  //xbar := TLFragmenter(8, 64) := borg.core.dataCache.node
   xbar := borg.core.instructionCache.node
   xbar := borg.core.dataCache.node
   fakeRamNode := xbar
