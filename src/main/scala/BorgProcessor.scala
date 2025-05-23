@@ -26,6 +26,7 @@ class BorgControlPathIo() extends Bundle {
   val dat = Flipped(new DatToCtlIo())
   val ctl = new CtlToDatIo()
   val imem = Flipped(new MemoryPortIo())
+  val dmem = Flipped(new MemoryPortIo())
 }
 
 object Instructions
@@ -43,29 +44,33 @@ class BorgControlPath() extends Module
   // Input and output signals for the control unit
   val io = IO(new BorgControlPathIo())
   io.imem.request := DontCare
+  io.dmem := DontCare
 
   // Look up the incoming instruction and set the ALU operation accordingly
   val csignals = ListLookup(
     io.dat.instruction,
-                       List(OP1_X,      ALU_X,        WB_X),
+                       List(OP1_X,      ALU_X,        WB_X,       MEMORY_UNDECIDED, MEMORY_X),
     Array(
-      // instruction        op1 select  alu function  writeback select
-      LUI           -> List(OP1_IMU,    ALU_COPY1,    WB_ALU),
-      LW            -> List(OP1_RS1,    ALU_ADD,      WB_MEM),
-      SW            -> List(OP1_RS1,    ALU_ADD,      WB_X),
-      ADDI          -> List(OP1_RS1,    ALU_ADD,    WB_ALU)
+      // instruction        op1 select  alu function  writeback   memory            read/write
+      LUI           -> List(OP1_IMU,    ALU_COPY1,    WB_ALU,     MEMORY_DISABLE,   MEMORY_X),
+      LW            -> List(OP1_RS1,    ALU_ADD,      WB_MEM,     MEMORY_ENABLE,    MEMORY_READ),
+      SW            -> List(OP1_RS1,    ALU_ADD,      WB_X,       MEMORY_ENABLE,    MEMORY_WRITE),
+      ADDI          -> List(OP1_RS1,    ALU_ADD,      WB_ALU,     MEMORY_DISABLE,   MEMORY_X)
     )
   )
 
   // Put the alu function into a variable
-  val cs_operand1_select :: cs_alu_fun :: cs_wb_sel :: Nil = csignals
+  val cs_operand1_select :: cs_alu_fun :: cs_wb_sel :: cs_memory_enable :: cs_memory_function :: Nil = csignals
 
   // Set the data path control signals
   io.ctl.alu_fun := cs_alu_fun
   io.ctl.operand1_select := cs_operand1_select
 
-  val stall = !io.imem.response.valid
+  val stall = !io.imem.response.valid || !( !(cs_memory_enable === MEMORY_ENABLE) || ((cs_memory_enable === MEMORY_ENABLE) && io.dmem.response.valid))
   io.ctl.stall := stall
+
+  io.dmem.request.valid := cs_memory_enable
+  io.dmem.request.bits.function := cs_memory_function
 }
 
 // Signals from the control unit to the data path unit
@@ -101,7 +106,7 @@ class BorgDataPath() extends Module
   }
 
   io.imem.request.bits.address := programCounter
-  io.imem.request.bits.function := M_XREAD
+  io.imem.request.bits.function := MEMORY_READ
   io.imem.request.bits.data := DontCare
   io.imem.request.valid := Mux(reset.asBool, false.B, true.B)
   io.imem.request.ready := DontCare
@@ -168,8 +173,11 @@ class BorgCoreModule(outer: BorgCore) extends LazyModuleImp(outer)
   val io = IO(new BorgCoreIo())
   io := DontCare
 
+  val dataCache = outer.dataCache.module
+
   val c  = Module(new BorgControlPath())
   c.io.imem.request := DontCare
+  c.io.dmem <> dataCache.io
 
   val d  = Module(new BorgDataPath())
   d.reset := reset
@@ -199,5 +207,6 @@ class BorgCore()(implicit p: Parameters) extends LazyModule
 {
   lazy val module = new BorgCoreModule(this)
   val instructionCache = LazyModule(new TrivialInstructionCache())
+  val dataCache = LazyModule(new TrivialDataCache())
 }
 

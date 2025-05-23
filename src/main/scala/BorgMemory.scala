@@ -32,9 +32,9 @@ trait MemoryOpConstants {
   val DPORT = 0
   val IPORT = 1
 
-  val M_X       =  0.U(1.W)
-  val M_XREAD   =  0.U(1.W)
-  val M_XWRITE  =  1.U(1.W)
+  val MEMORY_READ   =  1.U(2.W)
+  val MEMORY_WRITE  =  2.U(2.W)
+  val MEMORY_X      =  0.U(2.W)
 }
 
 trait ScalarOpConstants
@@ -53,6 +53,11 @@ trait ScalarOpConstants
   val WB_X      =  0.U(2.W)
   val WB_ALU    =  1.U(2.W)
   val WB_MEM    =  2.U(2.W)
+
+  // Memory Enable Signal
+  val MEMORY_ENABLE     = 1.U(2.W)
+  val MEMORY_DISABLE    = 2.U(2.W)
+  val MEMORY_UNDECIDED  = 0.U(2.W)
 }
 
 object Constants extends RISCVConstants with MemoryOpConstants with ScalarOpConstants {}
@@ -61,7 +66,7 @@ import Constants._
 
 class MemoryRequest() extends Bundle {
   val address = Output(UInt(32.W))
-  val function = Output(UInt(M_X.getWidth.W))
+  val function = Output(UInt(MEMORY_READ.getWidth.W))
   val data = Output(UInt(32.W))
 }
 
@@ -74,8 +79,14 @@ class MemoryPortIo() extends Bundle {
   val response = new ValidIO(new MemoryResponse())
 }
 
-class TrivialInstructionCacheModule(outer: TrivialInstructionCache)
-    extends LazyModuleImp(outer) {
+class TrivialDataCacheModule(outer: TrivialDataCache) extends LazyModuleImp(outer) {
+
+  val io = IO(new MemoryPortIo)
+  io := DontCare
+}
+
+class TrivialInstructionCacheModule(outer: TrivialInstructionCache) extends LazyModuleImp(outer) {
+
   val s_idle :: s_request :: s_response :: Nil = Enum(3)
   val state = RegInit(s_idle)
 
@@ -122,6 +133,24 @@ class TrivialInstructionCacheModule(outer: TrivialInstructionCache)
       }
     }
   }
+}
+
+class TrivialDataCache(implicit p: Parameters) extends LazyModule {
+  lazy val module = new TrivialDataCacheModule(this)
+
+  // Connection to main memory.
+  val node = TLClientNode(
+    Seq(
+      TLMasterPortParameters.v1(
+        Seq(
+          TLMasterParameters.v1(
+            name = "Borg Data Cache",
+            sourceId = IdRange(0, 1)
+          )
+        )
+      )
+    )
+  )
 }
 
 class TrivialInstructionCache(implicit p: Parameters) extends LazyModule {
