@@ -49,7 +49,7 @@ class BorgControlPath() extends Module
   // Look up the incoming instruction and set the ALU operation accordingly
   val csignals = ListLookup(
     io.dat.instruction,
-                       List(OP1_X,      ALU_X,        WB_X,       MEMORY_UNDECIDED, MEMORY_X),
+                       List(OP1_X,      ALU_X,        WB_X,       MEMORY_DISABLE, MEMORY_X),
     Array(
       // instruction        op1 select  alu function  writeback   memory            read/write
       LUI           -> List(OP1_IMU,    ALU_COPY1,    WB_ALU,     MEMORY_DISABLE,   MEMORY_X),
@@ -60,13 +60,13 @@ class BorgControlPath() extends Module
   )
 
   // Put the alu function into a variable
-  val cs_operand1_select :: cs_alu_fun :: cs_wb_sel :: cs_memory_enable :: cs_memory_function :: Nil = csignals
+  val cs_operand1_select :: cs_alu_fun :: cs_wb_sel :: (cs_memory_enable: Bool) :: cs_memory_function :: Nil = csignals
 
   // Set the data path control signals
   io.ctl.alu_fun := cs_alu_fun
   io.ctl.operand1_select := cs_operand1_select
 
-  val stall = !io.imem.response.valid || !( !(cs_memory_enable === MEMORY_ENABLE) || ((cs_memory_enable === MEMORY_ENABLE) && io.dmem.response.valid))
+  val stall = !io.imem.response.valid || !( !cs_memory_enable || (cs_memory_enable && io.dmem.response.valid))
   io.ctl.stall := stall
 
   io.dmem.request.valid := cs_memory_enable

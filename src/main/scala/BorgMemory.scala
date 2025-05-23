@@ -55,9 +55,8 @@ trait ScalarOpConstants
   val WB_MEM    =  2.U(2.W)
 
   // Memory Enable Signal
-  val MEMORY_ENABLE     = 1.U(2.W)
-  val MEMORY_DISABLE    = 2.U(2.W)
-  val MEMORY_UNDECIDED  = 0.U(2.W)
+  val MEMORY_ENABLE     = true.B
+  val MEMORY_DISABLE    = false.B
 }
 
 object Constants extends RISCVConstants with MemoryOpConstants with ScalarOpConstants {}

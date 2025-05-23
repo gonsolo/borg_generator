@@ -229,7 +229,7 @@ class FakeRam(edge: TLEdgeIn) extends Module {
     val instruction = Cat(immediate, rs1, funct3, rd, opcode) // I format
     instructions(1) := instruction
   }
-  // Load value 1 from address to a1 with lw
+  // Load value from address to t0 with lw
   {
     val immediate = 0.U(12.W)
     val rs1 = 10.U(5.W) // register 10 from above
