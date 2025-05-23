@@ -20,7 +20,8 @@ import freechips.rocketchip.tilelink.{
   TLMasterPortParameters,
   TLMessages,
   TLSlaveParameters,
-  TLSlavePortParameters
+  TLSlavePortParameters,
+  TLXbar
 }
 import org.chipsalliance.cde.config.Parameters
 import org.scalatest.flatspec.AnyFlatSpec
@@ -260,10 +261,8 @@ class FakeRam(edge: TLEdgeIn) extends Module {
     instructions(4) := instruction
   }
 
-  //printf(cf"FakeRam state: $state\n")
   switch(state) {
     is(s_idle) {
-      //printf(cf"FakeRam idle, a valid: ${io.tl.a.valid} a address: 0x${io.tl.a.bits.address}%x\n")
       when (io.tl.a.valid) {
         state := s_answer
       }
@@ -306,7 +305,10 @@ class BorgKickHarness(implicit p: Parameters) extends LazyModule {
     )
   )
 
-  fakeRamNode := TLFragmenter(8, 64) := borg.core.instructionCache.node
+  val xbar = TLXbar()
+  xbar := borg.core.instructionCache.node
+  //xbar := borg.core.dataCache.node
+  fakeRamNode := xbar
 
   lazy val module = Module(new Imp)
   class Imp extends LazyModuleImp(this) {

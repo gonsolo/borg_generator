@@ -80,8 +80,46 @@ class MemoryPortIo() extends Bundle {
 
 class TrivialDataCacheModule(outer: TrivialDataCache) extends LazyModuleImp(outer) {
 
+  //val s_idle :: s_request :: s_response :: Nil = Enum(3)
+  //val state = RegInit(s_idle)
+
+  //// TileLink port to memory.
+  //val (mem, edge) = outer.node.out(0)
+
+  //// IO between Core and ICache.
   val io = IO(new MemoryPortIo)
   io := DontCare
+  //io.request.ready := state === s_idle
+
+  //val address = RegNext(io.request.bits.address)
+
+  //mem.a.valid := state === s_request
+  //io.response.valid := false.B
+  //io.response.bits.data := 0.U
+
+  //switch (state) {
+  //  is (s_idle) {
+  //    when (io.request.valid) {
+  //      state := s_request
+  //    }
+  //  }
+  //  is (s_request) {
+  //    mem.a.bits := edge.Get(0.U, address, 2.U)._2
+  //    when (edge.done(mem.a)) {
+  //      state := s_response
+  //    }
+  //  }
+  //  is (s_response) {
+  //    mem.d.ready := true.B
+  //    when (mem.d.fire) {
+  //      io.response.bits.data := mem.d.bits.data
+  //      io.response.valid := true.B
+  //    }
+  //    when (edge.done(mem.d)) {
+  //      state := s_idle
+  //    }
+  //  }
+  //}
 }
 
 class TrivialInstructionCacheModule(outer: TrivialInstructionCache) extends LazyModuleImp(outer) {

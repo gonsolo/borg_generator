@@ -90,12 +90,14 @@ class BorgDataPathIo() extends Bundle()
   val ctl = Flipped(new CtlToDatIo())
   val dat = new DatToCtlIo()
   val imem = Flipped(new MemoryPortIo())
+  val dmem = Flipped(new MemoryPortIo())
   val startAddress = Input(UInt(32.W))
 }
 
 class BorgDataPath() extends Module
 {
   val io = IO(new BorgDataPathIo())
+  io.dmem.request := DontCare
 
   val programCounter = RegInit(io.startAddress)
   val programCounterNext = RegInit(io.startAddress)
@@ -166,6 +168,10 @@ class BorgDataPath() extends Module
 
   // To control unit
   io.dat.instruction := instruction
+
+  // To data cache
+  io.dmem.request.bits.address := alu_out
+  //io.dmem.request.bits.data := rs2_data.asUInt()
 }
 
 class BorgCoreModule(outer: BorgCore) extends LazyModuleImp(outer)
@@ -173,11 +179,8 @@ class BorgCoreModule(outer: BorgCore) extends LazyModuleImp(outer)
   val io = IO(new BorgCoreIo())
   io := DontCare
 
-  val dataCache = outer.dataCache.module
-
   val c  = Module(new BorgControlPath())
   c.io.imem.request := DontCare
-  c.io.dmem <> dataCache.io
 
   val d  = Module(new BorgDataPath())
   d.reset := reset
@@ -191,16 +194,10 @@ class BorgCoreModule(outer: BorgCore) extends LazyModuleImp(outer)
   d.io.imem.response <> instructionCache.io.response
   c.io.imem.response <> instructionCache.io.response
 
-  // Connect the control unit to the data path unit
-  // For example the control unit decodes an instruction and informs the data path unit
-  // about the alu function
-  // c.io.ctl <> d.io.ctl
-//  c.io.dat <> d.io.dat
-
-//  io.imem <> d.io.imem
-//  io.reset <> d.io.reset
-//
-//  d.io.reset_vector := io.reset_vector
+  val dataCache = outer.dataCache.module
+  dataCache.reset := reset
+  d.io.dmem <> dataCache.io
+  c.io.dmem <> dataCache.io
 }
 
 class BorgCore()(implicit p: Parameters) extends LazyModule
