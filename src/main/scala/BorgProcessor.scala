@@ -60,7 +60,7 @@ class BorgControlPath() extends Module
   // Put the alu function into a variable
   val cs_alu_fun :: cs_wb_sel :: Nil = csignals
 
-  printf(cf"BorgControlPath: instruction: ${io.dat.instruction}%b, ALU fun: $cs_alu_fun, WB: $cs_wb_sel\n")
+  //printf(cf"BorgControlPath: instruction: ${io.dat.instruction}%b, ALU fun: $cs_alu_fun, WB: $cs_wb_sel\n")
 
   // Set the data path control signals
   io.ctl.alu_fun := cs_alu_fun
@@ -75,7 +75,7 @@ class CtlToDatIo() extends Bundle() {
   // The CPU is stalled when waiting for the instruction cache. The program counter is not updated then.
   val stall = Output(Bool())
 
-  // The control unit decodes the instruction and set the correspong alu function for the data path unit.
+  // The control unit decodes the instruction and set the corresponding alu function for the data path unit.
   val alu_fun = Output(UInt(ALU_X.getWidth.W))
 
 }
@@ -132,8 +132,11 @@ class BorgDataPath() extends Module
 
   val alu_out = Wire(UInt(64.W))
 
+  printf(cf"BorgDataPath: alu_fun: ${io.ctl.alu_fun}\n")
+
   alu_out := MuxCase(0.U, unsafeWrapArray(Array(
-      (io.ctl.alu_fun === ALU_ADD) -> (alu_op1 + alu_op2).asUInt
+      (io.ctl.alu_fun === ALU_ADD) -> (alu_op1 + alu_op2).asUInt,
+      (io.ctl.alu_fun === ALU_COPY1) -> alu_op1
     )))
   //printf(cf" alu_out: $alu_out\n")
 
