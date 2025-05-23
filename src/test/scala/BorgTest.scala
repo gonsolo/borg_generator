@@ -222,7 +222,7 @@ class FakeRam(edge: TLEdgeIn) extends Module {
    // Load rest of address 0x5100 into a0 using addi
   {
     val immediate = load_address(11, 0)
-    val rs1 = 0.U(5.W)
+    val rs1 = 10.U(5.W)
     val funct3 = "h0".U(3.W)
     val rd = 10.U(5.W) // a0 = register 10
     val opcode = "b0010011".U(7.W)

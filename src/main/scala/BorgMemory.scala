@@ -32,22 +32,27 @@ trait MemoryOpConstants {
   val DPORT = 0
   val IPORT = 1
 
-  val M_X = "b0".asUInt(1.W)
-  val M_XREAD = "b0".asUInt(1.W)
-  val M_XWRITE = "b1".asUInt(1.W)
+  val M_X       =  0.U(1.W)
+  val M_XREAD   =  0.U(1.W)
+  val M_XWRITE  =  1.U(1.W)
 }
 
 trait ScalarOpConstants
 {
+  // RS1 Operand Select Signal
+  val OP1_X     =  0.U(2.W)
+  val OP1_RS1   =  1.U(2.W)
+  val OP1_IMU   =  2.U(2.W)
+
   // ALU Operation Signal
-  val ALU_X     =  0.asUInt(4.W) // unspecified alu function
-  val ALU_ADD   =  1.asUInt(4.W) // add alu function
-  val ALU_COPY1 = 11.asUInt(4.W)
+  val ALU_X     =  0.U(4.W) // unspecified alu function
+  val ALU_ADD   =  1.U(4.W) // add alu function
+  val ALU_COPY1 = 11.U(4.W)
 
   // Writeback Select Signal
-  val WB_X      =  0.asUInt(2.W)
-  val WB_ALU    =  1.asUInt(2.W)
-  val WB_MEM    =  2.asUInt(2.W)
+  val WB_X      =  0.U(2.W)
+  val WB_ALU    =  1.U(2.W)
+  val WB_MEM    =  2.U(2.W)
 }
 
 object Constants extends RISCVConstants with MemoryOpConstants with ScalarOpConstants {}

@@ -47,23 +47,22 @@ class BorgControlPath() extends Module
   // Look up the incoming instruction and set the ALU operation accordingly
   val csignals = ListLookup(
     io.dat.instruction,
-                       List(ALU_X,      WB_X),
+                       List(OP1_X,      ALU_X,        WB_X),
     Array(
-    // instruction    | alu function    | writeback select
-      LUI           -> List(ALU_COPY1,  WB_ALU),
-      LW            -> List(ALU_ADD,    WB_MEM),
-      SW            -> List(ALU_ADD,    WB_X),
-      ADDI          -> List(ALU_ADD,    WB_ALU)
+      // instruction        op1 select  alu function  writeback select
+      LUI           -> List(OP1_IMU,    ALU_COPY1,    WB_ALU),
+      LW            -> List(OP1_RS1,    ALU_ADD,      WB_MEM),
+      SW            -> List(OP1_RS1,    ALU_ADD,      WB_X),
+      ADDI          -> List(OP1_RS1,    ALU_ADD,    WB_ALU)
     )
   )
 
   // Put the alu function into a variable
-  val cs_alu_fun :: cs_wb_sel :: Nil = csignals
-
-  //printf(cf"BorgControlPath: instruction: ${io.dat.instruction}%b, ALU fun: $cs_alu_fun, WB: $cs_wb_sel\n")
+  val cs_operand1_select :: cs_alu_fun :: cs_wb_sel :: Nil = csignals
 
   // Set the data path control signals
   io.ctl.alu_fun := cs_alu_fun
+  io.ctl.operand1_select := cs_operand1_select
 
   val stall = !io.imem.response.valid
   io.ctl.stall := stall
@@ -78,6 +77,7 @@ class CtlToDatIo() extends Bundle() {
   // The control unit decodes the instruction and set the corresponding alu function for the data path unit.
   val alu_fun = Output(UInt(ALU_X.getWidth.W))
 
+  val operand1_select = Output(UInt(OP1_X.getWidth.W))
 }
 
 class BorgDataPathIo() extends Bundle()
@@ -104,11 +104,9 @@ class BorgDataPath() extends Module
   io.imem.request.bits.function := M_XREAD
   io.imem.request.bits.data := DontCare
   io.imem.request.valid := Mux(reset.asBool, false.B, true.B)
-  //printf(cf"  request valid: ${io.imem.request.valid} address: 0x${io.imem.request.bits.address}%x, stall: ${io.ctl.stall}\n")
   io.imem.request.ready := DontCare
 
   val instruction = Mux(io.imem.response.valid, io.imem.response.bits.data, BUBBLE)
-  //printf(cf"Borg instruction: 0x$instruction%x\n")
 
   val regfile = Mem(32, UInt(64.W))
 
@@ -119,47 +117,47 @@ class BorgDataPath() extends Module
 
   // immediates
   val imm_i = instruction(31, 20)
-  //printf(cf" immediate: $imm_i\n")
+  val imm_u = instruction(31, 12)
 
   // sign-extend immediates
   val imm_i_sext = Cat(Fill(20,imm_i(11)), imm_i)
+  val imm_u_sext = Cat(imm_u, Fill(12, 0.U))
 
   // For now: ADDI is always register source 1
-  val alu_op1 = rs1_data
+  val alu_op1 = MuxCase(0.U, unsafeWrapArray(Array(
+    (io.ctl.operand1_select === OP1_RS1) -> rs1_data,
+    (io.ctl.operand1_select === OP1_IMU) -> imm_u_sext
+  ))).asUInt
 
   // For now: ADDI is always immediate
   val alu_op2 = imm_i_sext
 
   val alu_out = Wire(UInt(64.W))
 
-  printf(cf"BorgDataPath: alu_fun: ${io.ctl.alu_fun}\n")
 
   alu_out := MuxCase(0.U, unsafeWrapArray(Array(
       (io.ctl.alu_fun === ALU_ADD) -> (alu_op1 + alu_op2).asUInt,
       (io.ctl.alu_fun === ALU_COPY1) -> alu_op1
     )))
-  //printf(cf" alu_out: $alu_out\n")
 
   val wb_data = Wire(UInt(64.W))
 
   wb_data := alu_out
-  //printf(cf" wb_data: $wb_data\n")
 
   // Writeback write enable
   val wb_wen = true.B // TODO
 
   // The address to write back to
   val wb_addr = instruction(RD_MSB, RD_LSB)
-  //printf(cf" wb_addr: $wb_addr\n")
 
   when (wb_wen && (wb_addr =/= 0.U))
   {
-    //printf(" writing\n")
     regfile(wb_addr) := wb_data
   }
 
+  printf(cf"Register 10: 0x${regfile(10)}%x\n")
+
   val address_written = RegNext(wb_addr)
-  //printf(cf"  regfile wb_addr: ${regfile(address_written)}\n")
 
   // To control unit
   io.dat.instruction := instruction
