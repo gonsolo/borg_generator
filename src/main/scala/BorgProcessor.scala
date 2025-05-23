@@ -69,8 +69,8 @@ class BorgControlPath() extends Module
   val stall = !io.imem.response.valid || !( !cs_memory_enable || (cs_memory_enable && io.dmem.response.valid))
   io.ctl.stall := stall
 
-  io.dmem.request.valid := cs_memory_enable
-  io.dmem.request.bits.function := cs_memory_function
+  //io.dmem.request.valid := cs_memory_enable
+  //io.dmem.request.bits.function := cs_memory_function
 }
 
 // Signals from the control unit to the data path unit
@@ -97,7 +97,7 @@ class BorgDataPathIo() extends Bundle()
 class BorgDataPath() extends Module
 {
   val io = IO(new BorgDataPathIo())
-  io.dmem.request := DontCare
+  io.dmem := DontCare
 
   val programCounter = RegInit(io.startAddress)
   val programCounterNext = RegInit(io.startAddress)
@@ -170,7 +170,7 @@ class BorgDataPath() extends Module
   io.dat.instruction := instruction
 
   // To data cache
-  io.dmem.request.bits.address := alu_out
+  //io.dmem.request.bits.address := alu_out
   //io.dmem.request.bits.data := rs2_data.asUInt()
 }
 

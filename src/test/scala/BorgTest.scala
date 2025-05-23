@@ -19,6 +19,7 @@ import freechips.rocketchip.tilelink.{
   TLMasterParameters,
   TLMasterPortParameters,
   TLMessages,
+  TLMonitor,
   TLSlaveParameters,
   TLSlavePortParameters,
   TLXbar
@@ -261,6 +262,8 @@ class FakeRam(edge: TLEdgeIn) extends Module {
     instructions(4) := instruction
   }
 
+  val a_bits = RegNext(io.tl.a.bits)
+
   switch(state) {
     is(s_idle) {
       when (io.tl.a.valid) {
@@ -271,8 +274,7 @@ class FakeRam(edge: TLEdgeIn) extends Module {
       val instruction_index = Wire(UInt(32.W))
       instruction_index := (address - 0x5000.U)/4.U
       val instruction = instructions(instruction_index)
-      io.tl.d.bits := edge.AccessAck(io.tl.a.bits, instruction)
-      printf(cf"FakeRam answer, address: 0x$address%x, instruction_index: $instruction_index, instruction: $instruction%b\n")
+      io.tl.d.bits := edge.AccessAck(a_bits, instruction)
 
       state := s_idle
     }
@@ -306,8 +308,11 @@ class BorgKickHarness(implicit p: Parameters) extends LazyModule {
   )
 
   val xbar = TLXbar()
+
+  //xbar := TLFragmenter(8, 64) := borg.core.instructionCache.node
+  //xbar := TLFragmenter(8, 64) := borg.core.dataCache.node
   xbar := borg.core.instructionCache.node
-  //xbar := borg.core.dataCache.node
+  xbar := borg.core.dataCache.node
   fakeRamNode := xbar
 
   lazy val module = Module(new Imp)

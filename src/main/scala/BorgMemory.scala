@@ -182,7 +182,7 @@ class TrivialDataCache(implicit p: Parameters) extends LazyModule {
         Seq(
           TLMasterParameters.v1(
             name = "Borg Data Cache",
-            sourceId = IdRange(0, 1)
+            sourceId = IdRange(2, 3)
           )
         )
       )
