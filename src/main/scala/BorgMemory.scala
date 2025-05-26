@@ -92,7 +92,7 @@ class TrivialDataCacheModule(outer: TrivialDataCache) extends LazyModuleImp(oute
   io.request.ready := state === s_idle
 
   val address = RegNext(io.request.bits.address)
-  printf(cf" saving address: ${io.request.bits.address}\n")
+  //printf(cf" saving address: 0x${io.request.bits.address}%x\n")
 
   mem.a.valid := state === s_request
   io.response.valid := false.B
@@ -105,7 +105,7 @@ class TrivialDataCacheModule(outer: TrivialDataCache) extends LazyModuleImp(oute
       }
     }
     is (s_request) {
-      printf(cf" data cache a request address: $address\n")
+      printf(cf" data cache a request address: 0x$address%x\n")
       mem.a.bits := edge.Get(2.U, address, 2.U)._2
       when (edge.done(mem.a)) {
         state := s_response

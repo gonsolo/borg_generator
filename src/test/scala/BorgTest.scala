@@ -262,6 +262,9 @@ class FakeRam(edge: TLEdgeIn) extends Module {
     instructions(4) := instruction
   }
 
+  val dataMemory = Mem(5, UInt(32.W))
+  dataMemory(0) := 0x7.U // Literal 7
+
   val a_bits = RegNext(io.tl.a.bits)
 
   switch(state) {
@@ -271,11 +274,20 @@ class FakeRam(edge: TLEdgeIn) extends Module {
       }
     }
     is(s_answer) {
-      val instruction_index = Wire(UInt(32.W))
-      instruction_index := (address - 0x5000.U)/4.U
-      val instruction = instructions(instruction_index)
-      io.tl.d.bits := edge.AccessAck(a_bits, instruction)
 
+      // Fake ram is split into instructions starting at 0x5000 and data starting at 0x5100
+      when (address < 0x5100.U) {
+        val instruction_index = Wire(UInt(32.W))
+        instruction_index := (address - 0x5000.U)/4.U
+        val instruction = instructions(instruction_index)
+        io.tl.d.bits := edge.AccessAck(a_bits, instruction)
+      }.otherwise {
+        val data_index = Wire(UInt(32.W))
+        data_index := (address - 0x5100.U)/4.U
+        val data = dataMemory(data_index)
+        printf(cf"FakeRam answer data: 0x$data%x\n")
+        io.tl.d.bits := edge.AccessAck(a_bits, data)
+      }
       state := s_idle
     }
   }
