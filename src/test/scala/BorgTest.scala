@@ -360,7 +360,7 @@ class BorgKickTest extends AnyFlatSpec {
       tester.reset.poke(true.B)
       tester.clock.step()
       tester.reset.poke(false.B)
-      tester.clock.step(50)
+      tester.clock.step(12)
       //println(tester.reset.asBool.peek().litToBoolean)
       //tester.clock.step(14)
       //tester.io.success.expect(true.B)

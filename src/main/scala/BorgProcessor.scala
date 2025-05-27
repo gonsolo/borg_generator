@@ -87,8 +87,12 @@ class BorgControlPath() extends Module
 
   val waitingForMem = RegInit(false.B)
   val wbSel = RegInit(cs_wb_sel)
+  val rfWen = RegInit(cs_rf_wen)
+  val storedRd = RegInit(io.dat.instruction(RD_MSB, RD_LSB))
   when (!waitingForMem) {
     wbSel := cs_wb_sel
+    rfWen := cs_rf_wen
+    storedRd := io.dat.instruction(RD_MSB, RD_LSB)
   }
 
   val stall = !io.imem.response.valid || !((cs_memory_enable && io.dmem.response.valid) || !cs_memory_enable) || waitingForMem
@@ -103,8 +107,8 @@ class BorgControlPath() extends Module
   io.ctl.alu_fun := cs_alu_fun
   io.ctl.operand1_select := cs_operand1_select
   io.ctl.wb_sel := wbSel
-  io.ctl.rf_wen := Mux(stall, false.B, cs_rf_wen)
-
+  io.ctl.rf_wen := rfWen
+  io.ctl.stored_rd := storedRd
 
   printf(cf"  dmem request valid: $cs_memory_enable\n")
   io.dmem.request.valid := cs_memory_enable
@@ -132,6 +136,8 @@ class CtlToDatIo() extends Bundle() {
   val wb_sel = Output(UInt(WB_X.getWidth.W))
 
   val rf_wen = Output(Bool())
+
+  val stored_rd = Output(UInt(32.W))
 }
 
 class BorgDataPathIo() extends Bundle()
@@ -207,7 +213,8 @@ class BorgDataPath() extends Module
   val wb_wen = io.ctl.rf_wen
 
   // The address to write back to
-  val wb_addr = instruction(RD_MSB, RD_LSB)
+  //val wb_addr = instruction(RD_MSB, RD_LSB)
+  val wb_addr = io.ctl.stored_rd
 
   printf(cf"  dmem response data: 0x${io.dmem.response.bits.data}%x\n")
   printf(cf"  wb_sel: 0x${io.ctl.wb_sel}%x\n")
