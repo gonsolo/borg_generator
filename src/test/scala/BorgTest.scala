@@ -213,7 +213,7 @@ class FakeRam(edge: TLEdgeIn) extends Module {
 
   val load_address = "h5100".U(32.W)
 
-  // Load upper from address 0x5100 into a0 using lui
+  // Load upper (0x5000) from address 0x5100 into a0 using lui
   {
     val immediate = load_address(31, 12)
     val rd = 10.U(5.W) // a0 = register 10

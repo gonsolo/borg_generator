@@ -89,10 +89,12 @@ class BorgControlPath() extends Module
   val wbSel = RegInit(cs_wb_sel)
   val rfWen = RegInit(cs_rf_wen)
   val storedRd = RegInit(io.dat.instruction(RD_MSB, RD_LSB))
+  val operand1Select = RegInit(cs_operand1_select)
   when (!waitingForMem) {
     wbSel := cs_wb_sel
     rfWen := cs_rf_wen
     storedRd := io.dat.instruction(RD_MSB, RD_LSB)
+    operand1Select := cs_operand1_select
   }
 
   val stall = !io.imem.response.valid || !((cs_memory_enable && io.dmem.response.valid) || !cs_memory_enable) || waitingForMem
@@ -105,7 +107,7 @@ class BorgControlPath() extends Module
   // Set the data path control signals
   io.ctl.stall := stall
   io.ctl.alu_fun := cs_alu_fun
-  io.ctl.operand1_select := cs_operand1_select
+  io.ctl.operand1_select := operand1Select
   io.ctl.wb_sel := wbSel
   io.ctl.rf_wen := rfWen
   io.ctl.stored_rd := storedRd
@@ -200,6 +202,13 @@ class BorgDataPath() extends Module
       (io.ctl.alu_fun === ALU_ADD) -> (alu_op1 + alu_op2).asUInt,
       (io.ctl.alu_fun === ALU_COPY1) -> alu_op1
     )))
+
+  printf(cf"  operand1_select: 0x${io.ctl.operand1_select}%x\n")
+  printf(cf"  rs1_data: 0x${rs1_data}%x\n")
+  printf(cf"  imm_u_sext: 0x${imm_u_sext}%x\n")
+  printf(cf"  alu_op1: 0x${alu_op1}%x\n")
+  printf(cf"  alu_op2: 0x${alu_op2}%x\n")
+  printf(cf"  alu_out: 0x${alu_out}%x\n")
 
   val wb_data = Wire(UInt(64.W))
 
