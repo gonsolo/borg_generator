@@ -12,6 +12,16 @@ import scala.collection.immutable.ArraySeq.unsafeWrapArray
 
 import Constants._
 
+object Instructions
+{
+  val LUI  = BitPat("b?????????????????????????0110111")
+  val LW   = BitPat("b?????????????????010?????0000011")
+  val SW   = BitPat("b?????????????????010?????0100011")
+  val ADDI = BitPat("b?????????????????000?????0010011")
+}
+
+import Instructions._
+
 class BorgCoreIo() extends Bundle
 {
   val imem = new MemoryPortIo()
@@ -19,7 +29,30 @@ class BorgCoreIo() extends Bundle
 }
 
 class DatToCtlIo() extends Bundle {
-  val instruction   = Output(UInt(32.W))
+  val instruction = Output(UInt(32.W))
+
+  override def toPrintable: Printable = {
+    val kind = Wire(UInt(3.W))
+    kind := 0.U // default
+
+    when(LW.matches(instruction))         { kind := 1.U }
+    .elsewhen(LUI.matches(instruction))   { kind := 2.U }
+    .elsewhen(SW.matches(instruction))    { kind := 3.U }
+    .elsewhen(ADDI.matches(instruction))  { kind := 4.U }
+    .elsewhen(BUBBLE === instruction)     { kind := 5.U }
+
+    val table = VecInit(Seq(
+      VecInit("UNKN".map(_.U(8.W))),
+      VecInit("  LW".map(_.U(8.W))),
+      VecInit(" LUI".map(_.U(8.W))),
+      VecInit("  SW".map(_.U(8.W))),
+      VecInit("ADDI".map(_.U(8.W))),
+      VecInit("BUBB".map(_.U(8.W)))
+    ))
+
+    val chars = table(kind)
+    cf"${chars(0)}%c${chars(1)}%c${chars(2)}%c${chars(3)}%c"
+  }
 }
 
 class BorgControlPathIo() extends Bundle {
@@ -28,16 +61,6 @@ class BorgControlPathIo() extends Bundle {
   val imem = Flipped(new MemoryPortIo())
   val dmem = Flipped(new MemoryPortIo())
 }
-
-object Instructions
-{
-  def LUI  = BitPat("b?????????????????????????0110111")
-  def LW   = BitPat("b?????????????????010?????0000011")
-  def SW   = BitPat("b?????????????????010?????0100011")
-  def ADDI = BitPat("b?????????????????000?????0010011")
-}
-
-import Instructions._
 
 class BorgControlPath() extends Module
 {
@@ -49,28 +72,45 @@ class BorgControlPath() extends Module
   // Look up the incoming instruction and set the ALU operation accordingly
   val csignals = ListLookup(
     io.dat.instruction,
-                       List(OP1_X,      ALU_X,        WB_X,       MEMORY_DISABLE, MEMORY_X),
+                       List(OP1_X,      ALU_X,        WB_X,       REN_0,  MEMORY_DISABLE,   MEMORY_X,     LOAD_0),
     Array(
-      // instruction        op1 select  alu function  writeback   memory            read/write
-      LUI           -> List(OP1_IMU,    ALU_COPY1,    WB_ALU,     MEMORY_DISABLE,   MEMORY_X),
-      LW            -> List(OP1_RS1,    ALU_ADD,      WB_MEM,     MEMORY_ENABLE,    MEMORY_READ),
-      SW            -> List(OP1_RS1,    ALU_ADD,      WB_X,       MEMORY_ENABLE,    MEMORY_WRITE),
-      ADDI          -> List(OP1_RS1,    ALU_ADD,      WB_ALU,     MEMORY_DISABLE,   MEMORY_X)
+      // instruction        op1 select  alu function  writeback   rf wen  memory            read/write    is_load
+      LUI           -> List(OP1_IMU,    ALU_COPY1,    WB_ALU,     REN_1,  MEMORY_DISABLE,   MEMORY_X,     LOAD_0),
+      LW            -> List(OP1_RS1,    ALU_ADD,      WB_MEM,     REN_1,  MEMORY_ENABLE,    MEMORY_READ,  LOAD_1),
+      SW            -> List(OP1_RS1,    ALU_ADD,      WB_X,       REN_0,  MEMORY_ENABLE,    MEMORY_WRITE, LOAD_0),
+      ADDI          -> List(OP1_RS1,    ALU_ADD,      WB_ALU,     REN_1,  MEMORY_DISABLE,   MEMORY_X,     LOAD_0)
     )
   )
 
   // Put the alu function into a variable
-  val cs_operand1_select :: cs_alu_fun :: cs_wb_sel :: (cs_memory_enable: Bool) :: cs_memory_function :: Nil = csignals
+  val cs_operand1_select :: cs_alu_fun :: cs_wb_sel :: (cs_rf_wen: Bool) :: (cs_memory_enable: Bool) :: cs_memory_function :: (cs_is_load: Bool) :: Nil = csignals
+
+  val waitingForMem = RegInit(false.B)
+  val wbSel = RegInit(cs_wb_sel)
+  when (!waitingForMem) {
+    wbSel := cs_wb_sel
+  }
+
+  val stall = !io.imem.response.valid || !((cs_memory_enable && io.dmem.response.valid) || !cs_memory_enable) || waitingForMem
+  printf(cf"  stall: $stall, instruction: ${io.dat}, waitingForMem: $waitingForMem\n")
+
+  when (io.dmem.response.valid) {
+    waitingForMem := false.B
+  }
 
   // Set the data path control signals
+  io.ctl.stall := stall
   io.ctl.alu_fun := cs_alu_fun
   io.ctl.operand1_select := cs_operand1_select
+  io.ctl.wb_sel := wbSel
+  io.ctl.rf_wen := Mux(stall, false.B, cs_rf_wen)
 
-  val stall = !io.imem.response.valid || !( !cs_memory_enable || (cs_memory_enable && io.dmem.response.valid))
-  io.ctl.stall := stall
 
   printf(cf"  dmem request valid: $cs_memory_enable\n")
   io.dmem.request.valid := cs_memory_enable
+  when (cs_is_load) {
+    waitingForMem := true.B
+  }
   io.dmem.request.bits.address := 0x5100.U
   //io.dmem.request.bits.function := cs_memory_function
   io.dmem.request.bits.function := MEMORY_READ
@@ -88,6 +128,10 @@ class CtlToDatIo() extends Bundle() {
   val alu_fun = Output(UInt(ALU_X.getWidth.W))
 
   val operand1_select = Output(UInt(OP1_X.getWidth.W))
+
+  val wb_sel = Output(UInt(WB_X.getWidth.W))
+
+  val rf_wen = Output(Bool())
 }
 
 class BorgDataPathIo() extends Bundle()
@@ -146,7 +190,6 @@ class BorgDataPath() extends Module
 
   val alu_out = Wire(UInt(64.W))
 
-
   alu_out := MuxCase(0.U, unsafeWrapArray(Array(
       (io.ctl.alu_fun === ALU_ADD) -> (alu_op1 + alu_op2).asUInt,
       (io.ctl.alu_fun === ALU_COPY1) -> alu_op1
@@ -154,19 +197,30 @@ class BorgDataPath() extends Module
 
   val wb_data = Wire(UInt(64.W))
 
-  wb_data := alu_out
+  wb_data := MuxCase(alu_out, unsafeWrapArray(Array(
+    (io.ctl.wb_sel === WB_ALU) -> alu_out,
+    (io.ctl.wb_sel === WB_MEM) -> io.dmem.response.bits.data
+  )))
+
 
   // Writeback write enable
-  val wb_wen = true.B // TODO
+  val wb_wen = io.ctl.rf_wen
 
   // The address to write back to
   val wb_addr = instruction(RD_MSB, RD_LSB)
+
+  printf(cf"  dmem response data: 0x${io.dmem.response.bits.data}%x\n")
+  printf(cf"  wb_sel: 0x${io.ctl.wb_sel}%x\n")
+  printf(cf"  wb_data: 0x${wb_data}%x\n")
+  printf(cf"  wb_wen: 0x${wb_wen}%x\n")
+  printf(cf"  wb_addr: 0x${wb_addr}%x\n")
 
   when (wb_wen && (wb_addr =/= 0.U))
   {
     regfile(wb_addr) := wb_data
   }
 
+  printf(cf"Register  5: 0x${regfile(5)}%x\n")
   printf(cf"Register 10: 0x${regfile(10)}%x\n")
 
   val address_written = RegNext(wb_addr)

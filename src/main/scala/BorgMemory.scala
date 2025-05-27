@@ -57,6 +57,14 @@ trait ScalarOpConstants
   // Memory Enable Signal
   val MEMORY_ENABLE     = true.B
   val MEMORY_DISABLE    = false.B
+
+  // Register File Write Enable Signal
+  val REN_0     = false.B
+  val REN_1     = true.B
+
+  // Is the instruction a load
+  val LOAD_0    = false.B
+  val LOAD_1    = true.B
 }
 
 object Constants extends RISCVConstants with MemoryOpConstants with ScalarOpConstants {}
@@ -114,6 +122,7 @@ class TrivialDataCacheModule(outer: TrivialDataCache) extends LazyModuleImp(oute
     is (s_response) {
       mem.d.ready := true.B
       when (mem.d.fire) {
+        printf(cf"  data cache d response data: 0x${mem.d.bits.data}%x\n")
         io.response.bits.data := mem.d.bits.data
         io.response.valid := true.B
       }
