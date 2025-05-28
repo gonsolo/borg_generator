@@ -26,15 +26,20 @@ trait RISCVConstants {
   // The most and least significant bits of the first source register rs1
   val RS1_MSB = 19
   val RS1_LSB = 15
+
+  val RS2_MSB = 24
+  val RS2_LSB = 20
 }
 
 trait MemoryOpConstants {
   val DPORT = 0
   val IPORT = 1
 
-  val MEMORY_READ   =  1.U(2.W)
-  val MEMORY_WRITE  =  2.U(2.W)
-  val MEMORY_X      =  0.U(2.W)
+  val MEMORY_X      =  0.U(1.W)
+  val MEMORY_READ   =  0.U(1.W)
+  val MEMORY_WRITE  =  1.U(1.W)
+
+  val MT_X          =  0.U(3.W)
 }
 
 trait ScalarOpConstants
@@ -43,6 +48,9 @@ trait ScalarOpConstants
   val OP1_X     =  0.U(2.W)
   val OP1_RS1   =  1.U(2.W)
   val OP1_IMU   =  2.U(2.W)
+
+  val OP2_IMI   =  1.U(2.W) // immediate, I-type 
+  val OP2_IMS   =  2.U(2.W) // immediate, S-type
 
   // ALU Operation Signal
   val ALU_X     =  0.U(4.W) // unspecified alu function
@@ -75,6 +83,8 @@ class MemoryRequest() extends Bundle {
   val address = Output(UInt(32.W))
   val function = Output(UInt(MEMORY_READ.getWidth.W))
   val data = Output(UInt(32.W))
+
+  val typ  = Output(UInt(MT_X.getWidth.W)) // memory type
 }
 
 class MemoryResponse() extends Bundle {

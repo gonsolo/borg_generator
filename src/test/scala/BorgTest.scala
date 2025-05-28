@@ -91,8 +91,10 @@ class BorgFirstHarness(implicit p: Parameters) extends LazyModule {
       )
     )
   )
-
-  fakeRamNode := TLFragmenter(8, 64) := borg.core.instructionCache.node
+  val xbar = TLXbar()
+  xbar := borg.core.instructionCache.node
+  xbar := borg.core.dataCache.node
+  fakeRamNode := xbar
 
   lazy val module = Module(new Imp)
   class Imp extends LazyModuleImp(this) {
