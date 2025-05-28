@@ -81,3 +81,71 @@ class BorgControlPath() extends Module
   io.dmem.request.ready := DontCare
 }
 
+// Minimal RISC-V control path supporting only: auipc, addi, flw, fadd.s, fsw
+
+import Constants._
+import ALU._
+
+class CtrlSignals extends Bundle {
+  val exe_kill      = Output(Bool())
+  val pc_sel        = Output(UInt(3.W))
+  val brjmp_sel     = Output(Bool())
+  val op1_sel       = Output(UInt(2.W))
+  val op2_sel       = Output(UInt(2.W))
+  val alu_fun       = Output(UInt(SZ_ALU_FN.W))
+  val wb_sel        = Output(UInt(2.W))
+  val rf_wen        = Output(Bool())
+  val bypassable    = Output(Bool())
+  val csr_cmd       = Output(UInt(SODOR_CSR_SZ))
+  val dmem_val      = Output(Bool())
+  val dmem_function = Output(UInt(MEMORY_X.getWidth.W))
+  val dmem_typ      = Output(UInt(3.W))
+  val exception     = Output(Bool())
+}
+
+class NewBorgControlPathIo extends Bundle {
+  val imem   = Flipped(new FrontEndCpuIO())
+  val dmem   = new MemoryPortIo()
+  val dat    = Flipped(new DatToCtlIo())
+  val ctl    = new CtrlSignals()
+}
+
+class NewBorgControlPath extends Module {
+  val io = IO(new NewBorgControlPathIo())
+
+  val csignals = ListLookup(io.imem.response.bits.inst,
+    List(SODOR_N, OP1_X, OP2_X, ALU_X, WB_X, REN_0, SODOR_N, SODOR_MEN_0, MEMORY_X, MT_X, SODOR_CSR_N),
+    Array(
+      AUIPC -> List(SODOR_Y, OP1_IMU, OP2_PC , ALU_ADD , WB_ALU, REN_1, SODOR_Y, SODOR_MEN_0, MEMORY_X, MT_X, SODOR_CSR_N),
+      ADDI  -> List(SODOR_Y, OP1_RS1, OP2_IMI, ALU_ADD , WB_ALU, REN_1, SODOR_Y, SODOR_MEN_0, MEMORY_X, MT_X, SODOR_CSR_N),
+      FLW   -> List(SODOR_Y, OP1_RS1, OP2_IMI, ALU_ADD , WB_MEM, REN_1, SODOR_N, SODOR_MEN_1, MEMORY_READ, MT_W, SODOR_CSR_N),
+      FADD_S-> List(SODOR_Y, OP1_RS1, OP2_RS2, ALU_ADD , WB_ALU, REN_1, SODOR_N, SODOR_MEN_0, MEMORY_X, MT_X, SODOR_CSR_N), // dummy ALU_ADD stub
+      FSW   -> List(SODOR_Y, OP1_RS1, OP2_IMS, ALU_ADD , WB_X  , REN_0, SODOR_N, SODOR_MEN_1, MEMORY_READ, MT_W, SODOR_CSR_N)
+    )
+  )
+
+  val (cs_inst_val: Bool) :: cs_op1_sel :: cs_op2_sel :: cs_alu_fun :: cs_wb_sel :: (cs_rf_wen: Bool) :: (cs_bypassable: Bool) :: (cs_mem_en: Bool) :: cs_mem_fcn :: cs_msk_sel :: cs_csr_cmd :: Nil = csignals
+
+  val ctrl_valid = io.imem.response.valid
+
+  val take_evec = WireDefault(false.B)
+
+  io.imem.request.valid := ctrl_valid
+
+  io.ctl.exe_kill   := take_evec
+  io.ctl.pc_sel     := Mux(take_evec, SODOR_PC_EXC, SODOR_PC_4)
+  io.ctl.brjmp_sel  := false.B
+  io.ctl.op1_sel    := cs_op1_sel
+  io.ctl.op2_sel    := cs_op2_sel
+  io.ctl.alu_fun    := cs_alu_fun
+  io.ctl.wb_sel     := cs_wb_sel
+  io.ctl.rf_wen     := Mux(!ctrl_valid, false.B, cs_rf_wen)
+  io.ctl.bypassable := cs_bypassable
+  io.ctl.csr_cmd    := Mux(!ctrl_valid, SODOR_CSR_N, cs_csr_cmd)
+  io.ctl.dmem_val   := cs_mem_en && ctrl_valid && !take_evec
+  io.ctl.dmem_function   := cs_mem_fcn
+  io.ctl.dmem_typ   := cs_msk_sel
+  io.ctl.exception  := !cs_inst_val && io.imem.response.valid
+  take_evec         := RegNext(io.ctl.exception) || io.dat.sodor_csr_eret
+}
+

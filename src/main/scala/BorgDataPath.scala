@@ -24,6 +24,7 @@ class BorgDataPath() extends Module
   val io = IO(new BorgDataPathIo())
   io.dmem := DontCare
   io.imem.request.bits.typ := DontCare
+  io.dat.sodor_csr_eret := DontCare
 
   val programCounter = RegInit(io.startAddress)
   val programCounterNext = RegInit(io.startAddress)
@@ -159,17 +160,6 @@ class FrontEndCpuIO extends Bundle
 {
   val request = Flipped(new ValidIO(new FrontEndRequest()))
   val response = new DecoupledIO(new FrontEndResponse())
-}
-
-class CtrlSignals extends Bundle {
-  val rf_wen        = Output(Bool())
-  val op1_sel       = Output(UInt(2.W))
-  val op2_sel       = Output(UInt(2.W))
-  val alu_fun       = Output(UInt(SZ_ALU_FN.W))
-  val dmem_val      = Output(Bool())
-  val dmem_function = Output(UInt(MEMORY_X.getWidth.W))
-  val dmem_typ      = Output(UInt(3.W))
-  val wb_sel        = Output(UInt(2.W))
 }
 
 class NewBorgDataPathIo extends Bundle {

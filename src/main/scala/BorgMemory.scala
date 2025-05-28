@@ -31,17 +31,21 @@ trait MemoryOpConstants {
   val MEMORY_WRITE  =  1.U(1.W)
 
   val MT_X          =  0.U(3.W)
+  val MT_W          =  3.U(3.W)
 }
 
-trait ScalarOpConstants
-{
+trait ScalarOpConstants {
+
   // RS1 Operand Select Signal
   val OP1_X     =  0.U(2.W)
   val OP1_RS1   =  1.U(2.W)
   val OP1_IMU   =  2.U(2.W)
 
+  val OP2_X     =  0.U(2.W)
+  val OP2_RS2   =  0.U(2.W)
   val OP2_IMI   =  1.U(2.W) // immediate, I-type 
   val OP2_IMS   =  2.U(2.W) // immediate, S-type
+  val OP2_PC    =  3.U(2.W) // PC
 
   // ALU Operation Signal
   val ALU_X     =  0.U(4.W) // unspecified alu function
@@ -66,7 +70,24 @@ trait ScalarOpConstants
   val LOAD_1    = true.B
 }
 
-object Constants extends RISCVConstants with MemoryOpConstants with ScalarOpConstants {}
+// TODO: Remove this!
+trait SodorConstants {
+
+  val SODOR_Y = true.B
+  val SODOR_N = false.B
+
+  val SODOR_CSR_SZ = 3.W
+  val SODOR_CSR_N = 0.U(SODOR_CSR_SZ)
+
+  val SODOR_MEN_0 = false.B
+  val SODOR_MEN_1 = true.B
+
+  // PC Select Signal
+  val SODOR_PC_4    = 4.U(3.W)  // PC + 4
+  val SODOR_PC_EXC  = 4.U(3.W)  // exception
+}
+
+object Constants extends RISCVConstants with MemoryOpConstants with ScalarOpConstants with SodorConstants {}
 
 import Constants._
 
