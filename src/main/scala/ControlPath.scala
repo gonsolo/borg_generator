@@ -10,7 +10,7 @@ import ALU._
 import Constants._
 import Instructions._
 
-class BorgControlPathIo() extends Bundle {
+class ControlPathIo() extends Bundle {
   val dat = Flipped(new DatToCtlIo())
   val ctl = new CtlToDatIo()
   //val imem = Flipped(new MemoryPortIo())
@@ -18,9 +18,9 @@ class BorgControlPathIo() extends Bundle {
   val dmem = Flipped(new MemoryPortIo())
 }
 
-class BorgControlPath() extends Module
+class ControlPath() extends Module
 {
-  val io = IO(new BorgControlPathIo())
+  val io = IO(new ControlPathIo())
   io := DontCare
 
   val csignals = ListLookup(io.imem.response.bits.inst,

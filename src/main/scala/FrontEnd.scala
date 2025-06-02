@@ -21,10 +21,10 @@ class FrontEndCpuIo extends Bundle
   val response = new DecoupledIO(new FrontEndResponse())
 }
 
-class FrontEndIO extends Bundle
+class FrontEndIo extends Bundle
 {
    val cpu  = new FrontEndCpuIo
-   val imem = new MemoryPortIo
+   val imem = Flipped(new MemoryPortIo)
 }
 
 object DummyFrontEnd {
@@ -37,7 +37,7 @@ import DummyFrontEnd._
 
 class FrontEnd extends Module
 {
-   val io = IO(new FrontEndIO)
+   val io = IO(new FrontEndIo)
    io := DontCare
 
    val if_reg_valid  = RegInit(false.B)

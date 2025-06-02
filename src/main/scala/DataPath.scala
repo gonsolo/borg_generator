@@ -10,7 +10,7 @@ import scala.collection.immutable.ArraySeq.unsafeWrapArray
 
 import Constants._
 
-class BorgDataPathIo() extends Bundle()
+class DataPathIo() extends Bundle()
 {
   val ctl = Flipped(new CtlToDatIo())
   val dat = new DatToCtlIo()
@@ -24,9 +24,9 @@ class BorgDataPathIo() extends Bundle()
   //val dat = new DatToCtlIo()
 }
 
-class BorgDataPath() extends Module
+class DataPath() extends Module
 {
-  val io = IO(new BorgDataPathIo())
+  val io = IO(new DataPathIo())
   io := DontCare
 
   val wb_reg_valid = RegInit(false.B)

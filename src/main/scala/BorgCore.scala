@@ -97,29 +97,33 @@ class BorgCoreModule(outer: BorgCore) extends LazyModuleImp(outer)
   val io = IO(new BorgCoreIo())
   io := DontCare
 
-  val c  = Module(new BorgControlPath())
-  c.io.imem.request := DontCare
-  c.io.imem := DontCare
-  c.io.ctl := DontCare
-
-  val d  = Module(new BorgDataPath())
-  d.io := DontCare
-  d.reset := reset
-  d.io.startAddress := io.startAddress
-  d.io.ctl <> c.io.ctl
-  d.io.dat <> c.io.dat
-
   val instructionCache = outer.instructionCache.module
+  val dataCache = outer.dataCache.module
+  val frontEnd = Module (new FrontEnd())
+  val controlPath  = Module(new ControlPath())
+  val dataPath  = Module(new DataPath())
+
+  frontEnd.io := DontCare
+
+  controlPath.io.imem.request := DontCare
+  controlPath.io.imem := DontCare
+  controlPath.io.ctl := DontCare
+
+  dataPath.io := DontCare
+  dataPath.reset := reset
+  dataPath.io.startAddress := io.startAddress
+  dataPath.io.ctl <> controlPath.io.ctl
+  dataPath.io.dat <> controlPath.io.dat
+
   instructionCache.reset := reset
   instructionCache.io := DontCare
   //instructionCache.io.request <> d.io.imem.request
   //d.io.imem.response <> instructionCache.io.response
   //c.io.imem.response <> instructionCache.io.response
 
-  val dataCache = outer.dataCache.module
   dataCache.reset := reset
-  d.io.dmem <> dataCache.io
-  c.io.dmem <> dataCache.io
+  dataPath.io.dmem <> dataCache.io
+  controlPath.io.dmem <> dataCache.io
 }
 
 class BorgCore()(implicit p: Parameters) extends LazyModule
