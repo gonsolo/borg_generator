@@ -83,6 +83,8 @@ class BorgCoreModule(outer: BorgCore) extends LazyModuleImp(outer)
 
   val c  = Module(new BorgControlPath())
   c.io.imem.request := DontCare
+  c.io.n_imem := DontCare
+  c.io.n_ctl := DontCare
 
   val d  = Module(new BorgDataPath())
   d.reset := reset
