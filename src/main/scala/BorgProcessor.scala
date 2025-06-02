@@ -99,7 +99,7 @@ class BorgCoreModule(outer: BorgCore) extends LazyModuleImp(outer)
 
   val c  = Module(new BorgControlPath())
   c.io.imem.request := DontCare
-  c.io.n_imem := DontCare
+  c.io.imem := DontCare
   c.io.ctl := DontCare
 
   val d  = Module(new BorgDataPath())
@@ -112,7 +112,7 @@ class BorgCoreModule(outer: BorgCore) extends LazyModuleImp(outer)
   instructionCache.reset := reset
   instructionCache.io.request <> d.io.imem.request
   d.io.imem.response <> instructionCache.io.response
-  c.io.imem.response <> instructionCache.io.response
+  //c.io.imem.response <> instructionCache.io.response
 
   val dataCache = outer.dataCache.module
   dataCache.reset := reset

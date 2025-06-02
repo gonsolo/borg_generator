@@ -108,3 +108,19 @@ class MemoryPortIo() extends Bundle {
   val response = new ValidIO(new MemoryResponse())
 }
 
+class FrontEndRequest() extends Bundle {
+  val pc   = UInt(32.W)
+}
+
+class FrontEndResponse() extends Bundle {
+  val pc   = UInt(32.W)
+  val inst = UInt(32.W)
+}
+
+class FrontEndCpuIO extends Bundle
+{
+  val request = Flipped(new ValidIO(new FrontEndRequest()))
+  val response = new DecoupledIO(new FrontEndResponse())
+}
+
+

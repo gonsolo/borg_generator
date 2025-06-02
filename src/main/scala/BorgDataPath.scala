@@ -143,25 +143,6 @@ class ALU extends Module {
    val io = IO(new AluIo)
 }
 
-class FrontEndCpuResponse() extends Bundle {
-  val data = Output(UInt(32.W))
-}
-
-class FrontEndRequest() extends Bundle {
-  val pc   = UInt(32.W)
-}
-
-class FrontEndResponse() extends Bundle {
-  val pc   = UInt(32.W)
-  val inst = UInt(32.W)
-}
-
-class FrontEndCpuIO extends Bundle
-{
-  val request = Flipped(new ValidIO(new FrontEndRequest()))
-  val response = new DecoupledIO(new FrontEndResponse())
-}
-
 class NewBorgDataPathIo extends Bundle {
   val imem = Flipped(new FrontEndCpuIO())
   val dmem = new MemoryPortIo()
