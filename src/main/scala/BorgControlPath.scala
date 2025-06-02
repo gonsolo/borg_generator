@@ -14,7 +14,7 @@ class BorgControlPathIo() extends Bundle {
   val dat = Flipped(new DatToCtlIo())
   val ctl = new CtlToDatIo()
   //val imem = Flipped(new MemoryPortIo())
-  val imem   = Flipped(new FrontEndCpuIO())
+  val imem   = Flipped(new FrontEndCpuIo())
   val dmem = Flipped(new MemoryPortIo())
 }
 

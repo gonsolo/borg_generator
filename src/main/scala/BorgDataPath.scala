@@ -18,7 +18,7 @@ class BorgDataPathIo() extends Bundle()
   val dmem = Flipped(new MemoryPortIo())
   val startAddress = Input(UInt(32.W))
 
-  val imem = Flipped(new FrontEndCpuIO())
+  val imem = Flipped(new FrontEndCpuIo())
   //val dmem = new MemoryPortIo()
   //val ctl = Input(new CtlToDatIo())
   //val dat = new DatToCtlIo()
