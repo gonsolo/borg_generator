@@ -17,7 +17,7 @@ class BorgControlPathIo() extends Bundle {
 
   val n_imem   = Flipped(new FrontEndCpuIO())
   //val n_dmem   = new MemoryPortIo()
-  val n_ctl    = new CtrlSignals()
+  //val n_ctl    = new CtrlSignals()
 }
 
 class BorgControlPath() extends Module
@@ -27,7 +27,7 @@ class BorgControlPath() extends Module
   io.imem.request := DontCare
   io.dmem := DontCare
   io.n_imem := DontCare
-  io.n_ctl := DontCare
+  io.ctl := DontCare
 
   // Look up the incoming instruction and set the ALU operation accordingly
   val csignals = ListLookup(
@@ -92,23 +92,6 @@ class BorgControlPath() extends Module
 import Constants._
 import ALU._
 
-class CtrlSignals extends Bundle {
-  val exe_kill      = Output(Bool())
-  val pc_sel        = Output(UInt(3.W))
-  val brjmp_sel     = Output(Bool())
-  val op1_sel       = Output(UInt(2.W))
-  val op2_sel       = Output(UInt(2.W))
-  val alu_fun       = Output(UInt(SZ_ALU_FN.W))
-  val wb_sel        = Output(UInt(2.W))
-  val rf_wen        = Output(Bool())
-  val bypassable    = Output(Bool())
-  val csr_cmd       = Output(UInt(SODOR_CSR_SZ))
-  val dmem_val      = Output(Bool())
-  val dmem_function = Output(UInt(MEMORY_X.getWidth.W))
-  val dmem_typ      = Output(UInt(3.W))
-  val exception     = Output(Bool())
-}
-
 class NewBorgControlPath extends Module {
   val io = IO(new BorgControlPathIo())
 
@@ -131,20 +114,20 @@ class NewBorgControlPath extends Module {
 
   io.imem.request.valid := ctrl_valid
 
-  io.n_ctl.exe_kill   := take_evec
-  io.n_ctl.pc_sel     := Mux(take_evec, SODOR_PC_EXC, SODOR_PC_4)
-  io.n_ctl.brjmp_sel  := false.B
-  io.n_ctl.op1_sel    := cs_op1_sel
-  io.n_ctl.op2_sel    := cs_op2_sel
-  io.n_ctl.alu_fun    := cs_alu_fun
-  io.n_ctl.wb_sel     := cs_wb_sel
-  io.n_ctl.rf_wen     := Mux(!ctrl_valid, false.B, cs_rf_wen)
-  io.n_ctl.bypassable := cs_bypassable
-  io.n_ctl.csr_cmd    := Mux(!ctrl_valid, SODOR_CSR_N, cs_csr_cmd)
-  io.n_ctl.dmem_val   := cs_mem_en && ctrl_valid && !take_evec
-  io.n_ctl.dmem_function   := cs_mem_fcn
-  io.n_ctl.dmem_typ   := cs_msk_sel
-  io.n_ctl.exception  := !cs_inst_val && io.imem.response.valid
-  take_evec         := RegNext(io.n_ctl.exception) || io.dat.sodor_csr_eret
+  io.ctl.exe_kill   := take_evec
+  io.ctl.pc_sel     := Mux(take_evec, SODOR_PC_EXC, SODOR_PC_4)
+  io.ctl.brjmp_sel  := false.B
+  io.ctl.op1_sel    := cs_op1_sel
+  io.ctl.op2_sel    := cs_op2_sel
+  io.ctl.alu_fun    := cs_alu_fun
+  io.ctl.wb_sel     := cs_wb_sel
+  io.ctl.rf_wen     := Mux(!ctrl_valid, false.B, cs_rf_wen)
+  io.ctl.bypassable := cs_bypassable
+  io.ctl.csr_cmd    := Mux(!ctrl_valid, SODOR_CSR_N, cs_csr_cmd)
+  io.ctl.dmem_val   := cs_mem_en && ctrl_valid && !take_evec
+  io.ctl.dmem_function   := cs_mem_fcn
+  io.ctl.dmem_typ   := cs_msk_sel
+  io.ctl.exception  := !cs_inst_val && io.imem.response.valid
+  take_evec         := RegNext(io.ctl.exception) || io.dat.sodor_csr_eret
 }
 

@@ -165,7 +165,7 @@ class FrontEndCpuIO extends Bundle
 class NewBorgDataPathIo extends Bundle {
   val imem = Flipped(new FrontEndCpuIO())
   val dmem = new MemoryPortIo()
-  val ctl = Input(new CtrlSignals())
+  val ctl = Input(new CtlToDatIo())
   val dat = new DatToCtlIo()
 }
 
@@ -174,7 +174,7 @@ class NewBorgDataPath extends Module {
   io := DontCare
 
   val wb_reg_valid = RegInit(false.B)
-  val wb_reg_ctrl = Reg(new CtrlSignals)
+  val wb_reg_ctrl = Reg(new CtlToDatIo)
   val wb_reg_pc = Reg(UInt(32.W))
   val wb_reg_alu = Reg(UInt(32.W))
   val wb_reg_wbaddr = Reg(UInt(log2Ceil(32).W))

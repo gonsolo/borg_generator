@@ -10,6 +10,7 @@ import org.chipsalliance.cde.config.{Parameters}
 import org.chipsalliance.diplomacy.lazymodule.{LazyModule, LazyModuleImp}
 
 import Constants._
+import ALU._
 
 object Instructions
 {
@@ -68,12 +69,27 @@ class CtlToDatIo() extends Bundle() {
   val stall = Output(Bool())
 
   // The control unit decodes the instruction and set the corresponding alu function for the data path unit.
-  val alu_fun = Output(UInt(ALU_X.getWidth.W))
+  //val alu_fun = Output(UInt(ALU_X.getWidth.W))
 
   val operand1_select = Output(UInt(OP1_X.getWidth.W))
-  val wb_sel = Output(UInt(WB_X.getWidth.W))
-  val rf_wen = Output(Bool())
+  //val wb_sel = Output(UInt(WB_X.getWidth.W))
+  //val rf_wen = Output(Bool())
   val stored_rd = Output(UInt(32.W))
+
+  val exe_kill      = Output(Bool())
+  val pc_sel        = Output(UInt(3.W))
+  val brjmp_sel     = Output(Bool())
+  val op1_sel       = Output(UInt(2.W))
+  val op2_sel       = Output(UInt(2.W))
+  val alu_fun       = Output(UInt(SZ_ALU_FN.W))
+  val wb_sel        = Output(UInt(2.W))
+  val rf_wen        = Output(Bool())
+  val bypassable    = Output(Bool())
+  val csr_cmd       = Output(UInt(SODOR_CSR_SZ))
+  val dmem_val      = Output(Bool())
+  val dmem_function = Output(UInt(MEMORY_X.getWidth.W))
+  val dmem_typ      = Output(UInt(3.W))
+  val exception     = Output(Bool())
 }
 
 class BorgCoreModule(outer: BorgCore) extends LazyModuleImp(outer)
@@ -84,7 +100,7 @@ class BorgCoreModule(outer: BorgCore) extends LazyModuleImp(outer)
   val c  = Module(new BorgControlPath())
   c.io.imem.request := DontCare
   c.io.n_imem := DontCare
-  c.io.n_ctl := DontCare
+  c.io.ctl := DontCare
 
   val d  = Module(new BorgDataPath())
   d.reset := reset
