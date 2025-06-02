@@ -103,27 +103,21 @@ class BorgCoreModule(outer: BorgCore) extends LazyModuleImp(outer)
   val controlPath  = Module(new ControlPath())
   val dataPath  = Module(new DataPath())
 
-  frontEnd.io := DontCare
+  frontEnd.io.imem <> instructionCache.io
+  frontEnd.io.cpu <> controlPath.io.imem
+  frontEnd.io.cpu <> dataPath.io.imem
+  frontEnd.io.cpu.request.valid := controlPath.io.imem.request.valid
 
-  controlPath.io.imem.request := DontCare
-  controlPath.io.imem := DontCare
-  controlPath.io.ctl := DontCare
+  controlPath.io.ctl <> dataPath.io.ctl
+  controlPath.io.dat <> dataPath.io.dat
 
-  dataPath.io := DontCare
-  dataPath.reset := reset
+  controlPath.io.dmem <> dataCache.io
+  dataPath.io.dmem <> dataCache.io
+
   dataPath.io.startAddress := io.startAddress
-  dataPath.io.ctl <> controlPath.io.ctl
-  dataPath.io.dat <> controlPath.io.dat
 
   instructionCache.reset := reset
-  instructionCache.io := DontCare
-  //instructionCache.io.request <> d.io.imem.request
-  //d.io.imem.response <> instructionCache.io.response
-  //c.io.imem.response <> instructionCache.io.response
-
   dataCache.reset := reset
-  dataPath.io.dmem <> dataCache.io
-  controlPath.io.dmem <> dataCache.io
 }
 
 class BorgCore()(implicit p: Parameters) extends LazyModule

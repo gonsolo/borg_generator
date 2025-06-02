@@ -28,7 +28,8 @@ class FrontEndIo extends Bundle
 }
 
 object DummyFrontEnd {
-  val START_ADDR = 0.U
+  val START_ADDR = "h5004".U
+
   val M_XRD = 0.U
   val MT_WU = 0.U
 }
@@ -74,6 +75,8 @@ class FrontEnd extends Module
       if_reg_pc    := if_pc_next
       if_reg_valid := if_val_next
    }
+
+   printf(cf" imem request address: $if_pc_next\n")
 
    // set up outputs to the instruction memory
    io.imem.request.bits.address := if_pc_next
