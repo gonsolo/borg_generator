@@ -76,7 +76,7 @@ class FrontEnd extends Module
       if_reg_valid := if_val_next
    }
 
-   printf(cf" imem request address: 0x$if_pc_next%x\n")
+   //printf(cf" imem request address: 0x$if_pc_next%x\n")
 
    // set up outputs to the instruction memory
    io.imem.request.bits.address := if_pc_next

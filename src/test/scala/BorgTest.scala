@@ -209,63 +209,128 @@ class FakeRam(edge: TLEdgeIn) extends Module {
   io.tl.a.ready := state === s_idle
   io.tl.d.valid := state === s_answer
 
+  def makeInstructionU(immediate: UInt, rd: UInt, opcode: UInt): UInt = {
+    require(immediate.getWidth == 20)
+    require(rd.getWidth == 5)
+    require(opcode.getWidth == 7)
+    Cat(immediate, rd, opcode)
+  }
+
+  def makeInstructionI(imm12: UInt, rs1: UInt, funct3: UInt, rd: UInt, opcode: UInt): UInt = {
+    require(imm12.getWidth == 12)
+    require(rs1.getWidth == 5)
+    require(funct3.getWidth == 3)
+    require(rd.getWidth == 5)
+    require(opcode.getWidth == 7)
+    Cat(imm12, rs1, funct3, rd, opcode_addi)
+  }
+
+  def makeInstructionF(funct7: UInt, rs2: UInt, rs1: UInt, funct3: UInt, rd: UInt, opcode: UInt): UInt = {
+    require(funct7.getWidth == 7)
+    require(rs2.getWidth == 5)
+    require(rs1.getWidth == 5)
+    require(funct3.getWidth == 3)
+    require(rd.getWidth == 5)
+    require(opcode.getWidth == 7)
+    Cat(funct7, rs2, rs1, funct3, rd, opcode_fadd_s)
+  }
+
+  def makeInstructionS(immHi: UInt, rs2: UInt, rs1: UInt, funct3: UInt, immLo: UInt, opcode: UInt): UInt = {
+    require(immHi.getWidth == 7)
+    require(rs2.getWidth == 5)
+    require(rs1.getWidth == 5)
+    require(funct3.getWidth == 3)
+    require(immLo.getWidth == 5)
+    require(opcode.getWidth == 7)
+    Cat(immHi, rs2, rs1, funct3, immLo, opcode)
+  }
+
   val address = RegNext(io.tl.a.bits.address)
 
-  val instructions = Mem(5, UInt(32.W))
+  val instructions = Mem(6, UInt(32.W))
 
   val load_address = "h5100".U(32.W)
 
-  // Load upper (0x5000) from address 0x5100 into a0 using lui
+  // Registers
+  val x10 = 10.U(5.W) // a0
+  val f0 = 0.U(5.W)
+  val f1 = 1.U(5.W)
+  val f2 = 2.U(5.W)
+
+  // Opcodes
+  val opcode_auipc  = "b0010111".U(7.W)
+  val opcode_addi   = "b0010011".U(7.W)
+  val opcode_flw    = "b0000111".U(7.W)
+  val opcode_fadd_s = "b1010011".U(7.W)
+  val opcode_fsw    = "b0100111".U(7.W)
+
+  // TODO: val1 and val2 are assumed to be consecutive floats at [a0 + 0] and [a0 + 4]
+
+  // auipc a0, %pcrel_hi(symbol)
   {
-    val immediate = load_address(31, 12)
-    val rd = 10.U(5.W) // a0 = register 10
-    val opcode = "b0110111".U(7.W)
-    val instruction = Cat(immediate, rd, opcode) // U format
+    val immediate = load_address(31, 12) // upper 20 bits
+    val instruction = makeInstructionU(immediate, x10, opcode_auipc)
     instructions(0) := instruction
   }
-   // Load rest of address 0x5100 into a0 using addi
+  // addi a0, a0, %pcrel_lo(symbol)
   {
-    val immediate = load_address(11, 0)
-    val rs1 = 10.U(5.W)
-    val funct3 = "h0".U(3.W)
-    val rd = 10.U(5.W) // a0 = register 10
-    val opcode = "b0010011".U(7.W)
-    val instruction = Cat(immediate, rs1, funct3, rd, opcode) // I format
+    val imm12 = load_address(11, 0)
+    val funct3 = "b000".U(3.W)
+    val rs1 = x10
+    val rd = x10
+    val instruction = makeInstructionI(imm12, rs1, funct3, rd, opcode_addi)
     instructions(1) := instruction
   }
-  // Load value from address to t0 with lw
+  // flw f0, 0(a0)
   {
-    val immediate = 0.U(12.W)
-    val rs1 = 10.U(5.W) // register 10 from above
-    val funct3 = "h2".U(3.W)
-    val rd = 5.U(5.W) // Load to t0 = register 5
-    val opcode = "b0000011".U(7.W)
-    val instruction = Cat(immediate, rs1, funct3, rd, opcode) // I format
+    val imm12 = 0.U(12.W)
+    val rs1 = x10
+    val funct3 = "b010".U(3.W)
+    val rd = f0
+    val instruction = makeInstructionI(imm12, rs1, funct3, rd, opcode_flw)
     instructions(2) := instruction
   }
-  // Add 666 to register t0 with addi
+  // flw f1, 4(a0)
   {
-    val immediate = 666.U(12.W)
-    val rs1 = 5.U(5.W) // Add to t0 = register 5
-    val funct3 = "h0".U(3.W)
-    val rd = 5.U(5.W) // Store to t0 again
-    val opcode = "b0010011".U(7.W)
-    val instruction = Cat(immediate, rs1, funct3, rd, opcode) // I format
+    val imm12= 4.U(12.W)
+    val rs1 = x10
+    val funct3 = "b010".U(3.W)
+    val rd = f1
+    val instruction = makeInstructionI(imm12, rs1, funct3, rd, opcode_flw)
     instructions(3) := instruction
   }
-  // Store value with sw
+  // fadd.s f2, f0, f1
   {
-    val immediate = 0.U(12.W)
-    val rs2 = 5.U(5.W) // Get value from t0 = register 5
-    val rs1 = 10.U(5.W) // Get store address from register a0 = 10
-    val funct3 = "h2".U(3.W)
-    val opcode = "b0100011".U(7.W)
-    val instruction = Cat(immediate(11, 5), rs2, rs1, funct3, immediate(4, 0), opcode) // S format
+    val funct7 = "b0000000".U(7.W)
+    val rs2 = f1
+    val rs1 = f0
+    val funct3 = "b000".U(3.W)
+    val rd = f2
+    val instruction = makeInstructionF(funct7, rs2, rs1, funct3, rd, opcode_fadd_s)
     instructions(4) := instruction
   }
+  // fsw f2, 8(a0)
+  {
+    val imm = 8.U(12.W)
+    val immHi = imm(11, 5)
+    val immLo = imm(4, 0)
+    val rs2 = f2
+    val rs1 = x10
+    val funct3 = "b010".U(3.W)
+    val instruction = makeInstructionS(immHi, rs2, rs1, funct3, immLo, opcode_fsw)
+    instructions(5) := instruction
+  }
 
+  def floatToUIntBits(f: Float): BigInt = {
+    java.lang.Float.floatToRawIntBits(f) & 0xFFFFFFFFL
+  }
+
+  val float0 = 666.6f
+  val float1 = 15.3f
+  // result: 681.9f
   val dataMemory = Mem(5, UInt(32.W))
-  dataMemory(0) := 0x7.U // Literal 7
+  dataMemory.write(0.U, floatToUIntBits(float0).U(32.W))
+  dataMemory.write(1.U, floatToUIntBits(float1).U(32.W))
 
   val a_bits = RegNext(io.tl.a.bits)
 
