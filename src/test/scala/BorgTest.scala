@@ -266,6 +266,14 @@ class FakeRam(edge: TLEdgeIn) extends Module {
 
   // TODO: val1 and val2 are assumed to be consecutive floats at [a0 + 0] and [a0 + 4]
 
+  // Instruction sequence: Load two floats, add them, store the result.
+  // auipc
+  // addi
+  // flw
+  // flw
+  // fadd.s
+  // fsw
+
   // auipc a0, %pcrel_hi(symbol)
   {
     val immediate = load_address(31, 12) // upper 20 bits

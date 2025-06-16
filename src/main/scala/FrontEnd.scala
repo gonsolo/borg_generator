@@ -79,10 +79,10 @@ class FrontEnd extends Module
    //printf(cf" imem request address: 0x$if_pc_next%x\n")
 
    // set up outputs to the instruction memory
-   io.imem.request.bits.address := if_pc_next
-   io.imem.request.valid     := if_val_next
+   io.imem.request.bits.address   := if_pc_next
+   io.imem.request.valid          := if_val_next
    io.imem.request.bits.function  := M_XRD
-   io.imem.request.bits.typ  := MT_WU
+   io.imem.request.bits.typ       := MT_WU
 
    //**********************************
    // Inst Fetch/Return Stage

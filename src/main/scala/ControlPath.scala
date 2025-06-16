@@ -13,7 +13,6 @@ import Instructions._
 class ControlPathIo() extends Bundle {
   val dat = Flipped(new DatToCtlIo())
   val ctl = new CtlToDatIo()
-  //val imem = Flipped(new MemoryPortIo())
   val imem   = Flipped(new FrontEndCpuIo())
   val dmem = Flipped(new MemoryPortIo())
 }
@@ -29,7 +28,7 @@ class ControlPath() extends Module
       AUIPC -> List(SODOR_Y, OP1_IMU, OP2_PC , ALU_ADD , WB_ALU, REN_1, SODOR_Y, SODOR_MEN_0, MEMORY_X, MT_X, SODOR_CSR_N),
       ADDI  -> List(SODOR_Y, OP1_RS1, OP2_IMI, ALU_ADD , WB_ALU, REN_1, SODOR_Y, SODOR_MEN_0, MEMORY_X, MT_X, SODOR_CSR_N),
       FLW   -> List(SODOR_Y, OP1_RS1, OP2_IMI, ALU_ADD , WB_MEM, REN_1, SODOR_N, SODOR_MEN_1, MEMORY_READ, MT_W, SODOR_CSR_N),
-      FADD_S-> List(SODOR_Y, OP1_RS1, OP2_RS2, ALU_ADD , WB_ALU, REN_1, SODOR_N, SODOR_MEN_0, MEMORY_X, MT_X, SODOR_CSR_N),
+      FADDS -> List(SODOR_Y, OP1_RS1, OP2_RS2, ALU_ADD , WB_ALU, REN_1, SODOR_N, SODOR_MEN_0, MEMORY_X, MT_X, SODOR_CSR_N),
       FSW   -> List(SODOR_Y, OP1_RS1, OP2_IMS, ALU_ADD , WB_X  , REN_0, SODOR_N, SODOR_MEN_1, MEMORY_READ, MT_W, SODOR_CSR_N)
     )
   )
