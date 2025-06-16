@@ -86,11 +86,13 @@ class FrontEnd extends Module
 
    //**********************************
    // Inst Fetch/Return Stage
+   printf(cf"Frontend: response ready: ${io.cpu.response.ready}\n")
    when (io.cpu.response.ready)
    {
       exe_reg_valid := if_reg_valid && !io.cpu.request.valid
       exe_reg_pc    := if_reg_pc
       exe_reg_inst  := io.imem.response.bits.data
+      printf(cf"Frontend: instruction: ${io.imem.response.bits.data}\n")
    }
 
    //**********************************

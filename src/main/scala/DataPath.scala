@@ -29,11 +29,15 @@ class DataPath() extends Module
   val io = IO(new DataPathIo())
   io := DontCare
 
+  // Pipeline state registers
   val wb_reg_valid = RegInit(false.B)
   val wb_reg_ctrl = Reg(new CtlToDatIo)
   val wb_reg_pc = Reg(UInt(32.W))
   val wb_reg_alu = Reg(UInt(32.W))
   val wb_reg_wbaddr = Reg(UInt(log2Ceil(32).W))
+
+  // For now (no stalling)
+  io.imem.response.ready := true.B
 
   val exe_valid = io.imem.response.valid
   val exe_inst = io.imem.response.bits.inst
