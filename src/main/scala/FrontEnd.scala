@@ -43,6 +43,7 @@ class FrontEnd extends Module
 
    val if_reg_valid  = RegInit(false.B)
    val if_reg_pc     = RegInit(START_ADDR - 4.U)
+   printf(cf"  if_reg_pc: 0x$if_reg_pc%x\n")
 
    val exe_reg_valid = RegInit(false.B)
    val exe_reg_pc    = Reg(UInt(32.W))
@@ -58,28 +59,32 @@ class FrontEnd extends Module
    // stall IF/EXE if backend not ready
    when (io.cpu.response.ready)
    {
+      printf(cf"  ready: setting if_pc_next plus4: 0x$if_pc_plus4%x\n")
       if_pc_next := if_pc_plus4
-      when (io.cpu.request.valid)
-      {
-         // datapath is redirecting the PC stream (misspeculation)
-         if_pc_next := io.cpu.request.bits.pc
-      }
+      //when (io.cpu.request.valid)
+      //{
+      //   // datapath is redirecting the PC stream (misspeculation)
+      //   if_pc_next := io.cpu.request.bits.pc
+      //    printf(cf"  redirecting if_pc_next: 0x$if_pc_next%x\n")
+      //}
    }
    .otherwise
    {
+      printf(cf"  otherwise: setting if_pc_next if_reg_pc: 0x$if_reg_pc%x\n")
       if_pc_next  := if_reg_pc
    }
 
    when (io.cpu.response.ready)
    {
       if_reg_pc    := if_pc_next
+      printf(cf"  setting if_reg_pc to if_pc_next: 0x$if_pc_next%x\n")
       if_reg_valid := if_val_next
    }
 
-   //printf(cf" imem request address: 0x$if_pc_next%x\n")
 
    // set up outputs to the instruction memory
    io.imem.request.bits.address   := if_pc_next
+   printf(cf"Frontend imem request address: 0x$if_pc_next%x\n")
    io.imem.request.valid          := if_val_next
    io.imem.request.bits.function  := M_XRD
    io.imem.request.bits.typ       := MT_WU

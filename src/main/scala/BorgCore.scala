@@ -101,7 +101,7 @@ class BorgCoreModule(outer: BorgCore) extends LazyModuleImp(outer)
 
   val instructionCache = outer.instructionCache.module
   val dataCache = outer.dataCache.module
-  val frontEnd = Module (new FrontEnd())
+  val frontEnd = Module(new FrontEnd())
   val controlPath  = Module(new ControlPath())
   val dataPath  = Module(new DataPath())
 
