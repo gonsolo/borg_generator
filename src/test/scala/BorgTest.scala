@@ -354,6 +354,7 @@ class FakeRam(edge: TLEdgeIn) extends Module {
       when (address < 0x5100.U) {
         val instruction_index = Wire(UInt(32.W))
         instruction_index := (address - 0x5000.U)/4.U
+        printf(cf"FakeRam: instruction index: $instruction_index\n")
         val instruction = instructions(instruction_index)
         io.tl.d.bits := edge.AccessAck(a_bits, instruction)
       }.otherwise {
