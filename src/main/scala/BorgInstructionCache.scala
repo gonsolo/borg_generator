@@ -42,7 +42,7 @@ class BorgInstructionCacheModule(outer: BorgInstructionCache) extends LazyModule
     }
     is (s_request) {
       assert(address >= "h5000".U)
-      //printf(cf"Borg icache request 0x${address}%x\n")
+      printf(cf"Borg icache request 0x${address}%x\n")
       //mem.a.valid := true.B
       mem.a.bits := edge.Get(0.U, address, 2.U)._2
       //    mem.d.ready := false.B

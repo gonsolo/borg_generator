@@ -56,8 +56,10 @@ class FrontEnd extends Module
 
   val if_pc_plus4 = (if_reg_pc + 4.asUInt(32.W))
 
+  if_val_next := io.imem.request.ready
+
   // stall IF/EXE if backend not ready
-  when (io.cpu.response.ready)
+  when (io.cpu.response.ready && if_val_next)
   {
      //printf(cf"  ready: setting if_pc_next plus4: 0x$if_pc_plus4%x\n")
      if_pc_next := if_pc_plus4
