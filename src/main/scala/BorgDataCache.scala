@@ -42,7 +42,7 @@ class BorgDataCacheModule(outer: BorgDataCache) extends LazyModuleImp(outer) {
       }
     }
     is (s_request) {
-      printf(cf" data cache a request address: 0x$address%x\n")
+      //printf(cf" data cache a request address: 0x$address%x\n")
       mem.a.bits := edge.Get(2.U, address, 2.U)._2
       when (edge.done(mem.a)) {
         state := s_response
@@ -51,7 +51,7 @@ class BorgDataCacheModule(outer: BorgDataCache) extends LazyModuleImp(outer) {
     is (s_response) {
       mem.d.ready := true.B
       when (mem.d.fire) {
-        printf(cf"  data cache d response data: 0x${mem.d.bits.data}%x\n")
+        //printf(cf"  data cache d response data: 0x${mem.d.bits.data}%x\n")
         io.response.bits.data := mem.d.bits.data
         io.response.valid := true.B
       }
