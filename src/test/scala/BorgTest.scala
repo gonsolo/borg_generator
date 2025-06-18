@@ -5,7 +5,7 @@ package borg
 
 import chisel3._
 import chisel3.simulator.EphemeralSimulator._
-import chisel3.util.{Cat, Enum, is, switch}
+import chisel3.util.{Cat, Enum, MuxLookup, is, switch}
 import freechips.rocketchip.diplomacy.{AddressSet, IdRange, TransferSizes}
 import freechips.rocketchip.resources.SimpleDevice
 import freechips.rocketchip.tilelink.{
@@ -192,6 +192,9 @@ class BorgRegisterDriver(edge: TLEdgeOut) extends Module {
   }
 }
 
+import Instructions._
+import Constants._
+
 class FakeRam(edge: TLEdgeIn) extends Module {
   val io = IO(new Bundle {
     val tl = Flipped(new TLBundle(edge.bundle))
@@ -222,7 +225,7 @@ class FakeRam(edge: TLEdgeIn) extends Module {
     require(funct3.getWidth == 3)
     require(rd.getWidth == 5)
     require(opcode.getWidth == 7)
-    Cat(imm12, rs1, funct3, rd, opcode_addi)
+    Cat(imm12, rs1, funct3, rd, opcode)
   }
 
   def makeInstructionF(funct7: UInt, rs2: UInt, rs1: UInt, funct3: UInt, rd: UInt, opcode: UInt): UInt = {
@@ -232,7 +235,7 @@ class FakeRam(edge: TLEdgeIn) extends Module {
     require(funct3.getWidth == 3)
     require(rd.getWidth == 5)
     require(opcode.getWidth == 7)
-    Cat(funct7, rs2, rs1, funct3, rd, opcode_fadd_s)
+    Cat(funct7, rs2, rs1, funct3, rd, opcode)
   }
 
   def makeInstructionS(immHi: UInt, rs2: UInt, rs1: UInt, funct3: UInt, immLo: UInt, opcode: UInt): UInt = {
@@ -243,6 +246,34 @@ class FakeRam(edge: TLEdgeIn) extends Module {
     require(immLo.getWidth == 5)
     require(opcode.getWidth == 7)
     Cat(immHi, rs2, rs1, funct3, immLo, opcode)
+  }
+
+  def instructionDescription(instruction: UInt): Printable = {
+
+    val opcode = instruction(6, 0)
+    printf(cf"opcode: $opcode%b\n")
+    val kind = Wire(UInt(3.W))
+    kind := 0.U // default
+
+    when(AUIPC.matches(instruction))        { kind := 1.U }
+    .elsewhen(ADDI.matches(instruction))    { kind := 2.U }
+    .elsewhen(FLW.matches(instruction))     { kind := 3.U }
+    .elsewhen(FADDS.matches(instruction))   { kind := 4.U }
+    .elsewhen(FSW.matches(instruction))     { kind := 5.U }
+    .elsewhen(BUBBLE === instruction)       { kind := 6.U }
+
+    val table = VecInit(Seq(
+      VecInit("UNKNO".map(_.U(8.W))),
+      VecInit("AUIPC".map(_.U(8.W))),
+      VecInit(" ADDI".map(_.U(8.W))),
+      VecInit("  FLW".map(_.U(8.W))),
+      VecInit("FADDS".map(_.U(8.W))),
+      VecInit("  FSW".map(_.U(8.W))),
+      VecInit("BUBBL".map(_.U(8.W)))
+    ))
+
+    val chars = table(kind)
+    cf"${chars(0)}%c${chars(1)}%c${chars(2)}%c${chars(3)}%c${chars(4)}%c"
   }
 
   val address = RegNext(io.tl.a.bits.address)
@@ -354,8 +385,9 @@ class FakeRam(edge: TLEdgeIn) extends Module {
       when (address < 0x5100.U) {
         val instruction_index = Wire(UInt(32.W))
         instruction_index := (address - 0x5000.U)/4.U
-        printf(cf"FakeRam: instruction index: $instruction_index\n")
         val instruction = instructions(instruction_index)
+        val description = instructionDescription(instruction)
+        printf(cf"FakeRam: instruction index: $instruction_index, instruction: $instruction%b, description: $description\n")
         io.tl.d.bits := edge.AccessAck(a_bits, instruction)
       }.otherwise {
         val data_index = Wire(UInt(32.W))
