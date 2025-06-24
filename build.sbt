@@ -22,6 +22,7 @@ lazy val root = (project in file("."))
       "-language:reflectiveCalls",
     ),
     addCompilerPlugin("org.chipsalliance" % "chisel-plugin" % chisel6Version cross CrossVersion.full),
-    resolvers += Resolver.sonatypeCentralSnapshots
+    resolvers ++= Resolver.sonatypeOssRepos("snapshots"),
+    resolvers ++= Resolver.sonatypeOssRepos("releases")
 )
 
